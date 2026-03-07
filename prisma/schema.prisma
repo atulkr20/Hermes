@@ -1,0 +1,88 @@
+// This tells Prisma which database we're using and where to find it
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL") // reads from your .env file
+}
+
+// ─── Merchant ─────────────────────────────────────────────────────
+// Represents a business that has registered to receive webhook events.
+// Think of this like a Stripe customer who has set up a webhook endpoint
+// in their dashboard.
+model Merchant {
+  id          String   @id @default(uuid())
+  name        String
+  endpointUrl String   // the URL we POST webhooks to
+  secretKey   String   // HMAC signing key, shown only once at registration
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+
+  // One merchant can have many webhook events
+  events      WebhookEvent[]
+}
+
+// ─── WebhookEvent ─────────────────────────────────────────────────
+// Represents a single event that needs to be delivered.
+// e.g. { eventType: "payment.success", payload: { amount: 500, currency: "INR" } }
+// This is created when someone calls POST /api/events
+model WebhookEvent {
+  id         String      @id @default(uuid())
+  merchantId String      // foreign key → Merchant
+  eventType  String      // e.g. "payment.success", "refund.processed"
+  payload    Json        // the actual data we deliver to the merchant
+  status     EventStatus @default(PENDING)
+  createdAt  DateTime    @default(now())
+
+  // Relations
+  merchant         Merchant          @relation(fields: [merchantId], references: [id])
+  deliveryAttempts DeliveryAttempt[]
+  deadLetterEntry  DeadLetterQueue?  // nullable — only exists if event is DEAD
+}
+
+// ─── EventStatus ──────────────────────────────────────────────────
+// An enum tracks the lifecycle of a webhook event.
+// PENDING   → sitting in queue, not yet attempted
+// DELIVERED → at least one attempt returned 2xx
+// FAILED    → last attempt failed, but still has retries left
+// DEAD      → exhausted all retries, moved to DLQ
+enum EventStatus {
+  PENDING
+  DELIVERED
+  FAILED
+  DEAD
+}
+
+// ─── DeliveryAttempt ──────────────────────────────────────────────
+// Every single HTTP call we make to a merchant's endpoint gets logged here.
+// This is your audit trail — critical in fintech.
+// Even if we attempt delivery 5 times, all 5 rows are stored here.
+model DeliveryAttempt {
+  id           String   @id @default(uuid())
+  eventId      String   // foreign key → WebhookEvent
+  attemptNumber Int     // 1, 2, 3, 4, 5
+  statusCode   Int?     // nullable — if request timed out, there's no status code
+  responseBody String?  // first 500 chars of response, for debugging
+  success      Boolean  // true if statusCode was 2xx
+  deliveredAt  DateTime @default(now())
+
+  // Relations
+  event WebhookEvent @relation(fields: [eventId], references: [id])
+}
+
+// ─── DeadLetterQueue ──────────────────────────────────────────────
+// Stores events that have permanently failed (exhausted all retries).
+// Inspired by how message queues like SQS handle undeliverable messages.
+// The @unique on eventId means one event can only have ONE DLQ entry.
+model DeadLetterQueue {
+  id         String    @id @default(uuid())
+  eventId    String    @unique // one-to-one with WebhookEvent
+  reason     String    // why it failed e.g. "Max retries exhausted, last status: 500"
+  failedAt   DateTime  @default(now())
+  requeuedAt DateTime? // nullable — set when someone calls POST /api/dlq/:id/requeue
+
+  // Relations
+  event WebhookEvent @relation(fields: [eventId], references: [id])
+}
