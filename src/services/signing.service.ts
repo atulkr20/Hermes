@@ -6,7 +6,7 @@ export const signingService = {
         const payloadString = JSON.stringify(payload);
 
         const signature = crypto
-        .createHash('sha256', secretKey)
+        .createHmac('sha256', secretKey)
         .update(payloadString)
         .digest('hex');
 
