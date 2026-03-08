@@ -10,6 +10,7 @@
   "author": "",
   "license": "ISC",
   "devDependencies": {
+    "@prisma/client": "^6.0.0",
     "@types/axios": "^0.9.36",
     "@types/bcryptjs": "^2.4.6",
     "@types/express": "^5.0.6",
@@ -19,12 +20,11 @@
     "@types/swagger-jsdoc": "^6.0.4",
     "@types/swagger-ui-express": "^4.1.8",
     "nodemon": "^3.1.14",
-    "prisma": "^7.4.2",
+    "prisma": "^6.0.0",
     "ts-node": "^10.9.2",
     "typescript": "^5.9.3"
   },
   "dependencies": {
-    "@prisma/client": "^7.4.2",
     "axios": "^1.13.6",
     "bcryptjs": "^3.0.3",
     "bullmq": "^5.70.4",
