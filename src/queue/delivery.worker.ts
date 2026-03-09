@@ -1,7 +1,7 @@
 import { Worker, Job } from 'bullmq';
 import axios, { AxiosError } from 'axios';
 import prisma from '../config/db.js';
-import { redis } from '../config/redis.js';
+import { redisConnection } from '../config/redis.js';
 import { signingService } from '../services/signing.service.js';
 import { deliveryQueue } from './delivery.queue.js';
 
@@ -177,7 +177,7 @@ export const deliveryWorker = new Worker<DeliveryJobData>(
     'webhook-delivery',
     processDelivery,
     {
-        connection: redis,
+        connection: redisConnection,
         concurrency: 5, // Process up to 5 jobs simultaneously
 
     }

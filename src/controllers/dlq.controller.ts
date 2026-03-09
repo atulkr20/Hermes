@@ -1,6 +1,6 @@
-import { Request, Response, NextFunction } from 'express';
+import type { Request, Response, NextFunction } from 'express';
 import { dlqService } from '../services/dlq.service.js';
-import { RequestEventDto, RequeueEventDto } from '../dtos/dlq.dto.js';
+import { RequeueEventDto } from '../dtos/dlq.dto.js';
 
 export const dlqController = {
     async getAllDeadEvents(req: Request, res: Response, next: NextFunction) {
@@ -20,10 +20,18 @@ export const dlqController = {
     async getDeadEventById(req: Request, res: Response, next: NextFunction) {
         try {
             const { eventId } = req.params;
+
+            if (!eventId || typeof eventId !== 'string') {
+                return res.status(400).json({
+                    success: false,
+                    message: 'eventId is required',
+                });
+            }
+
             const entry = await dlqService.getDeadEventById(eventId);
 
             if(!entry) {
-                return res.status(404).json.json({
+                return res.status(404).json({
                     success: false,
                     message: 'No DLQ entry found for this event',
                 });

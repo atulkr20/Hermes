@@ -1,4 +1,4 @@
-import { Request, Response, NextFunction } from 'express';
+import type { Request, Response, NextFunction } from 'express';
 import { merchantService } from '../services/merchant.service.js';
 import { RegisterMerchantDto, ToggleMerchanatDto } from '../dtos/merchant.dto.js';
 
@@ -31,6 +31,14 @@ export const merchantController = {
     async getById(req: Request, res: Response, next: NextFunction) {
         try {
             const { id } = req.params;
+
+            if (!id || typeof id !== 'string') {
+                return res.status(400).json({
+                    success: false,
+                    message: 'id path parameter is required',
+                });
+            }
+
             const merchant = await merchantService.getById(id);
 
             if(!merchant) {
@@ -54,6 +62,14 @@ export const merchantController = {
     async toggle(req: Request, res: Response, next: NextFunction) {
         try {
             const { id } = req.params;
+
+            if (!id || typeof id !== 'string') {
+                return res.status(400).json({
+                    success: false,
+                    message: 'id path parameter is required',
+                });
+            }
+
             const { isActive } = ToggleMerchanatDto.parse(req.body);
 
             const merchant = await merchantService.toggle(id, isActive);

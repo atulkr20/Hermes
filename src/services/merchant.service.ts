@@ -1,6 +1,6 @@
 import crypto from 'crypto';
 import prisma from '../config/db.js';
-import { RegisterMerchantInput } from '../dtos/merchant.dto.js';
+import type { RegisterMerchantInput } from '../dtos/merchant.dto.js';
 
 
 export const merchantService ={

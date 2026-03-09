@@ -1,4 +1,4 @@
-import { Request, Response, NextFunction } from 'express';
+import type { Request, Response, NextFunction } from 'express';
 import { webhookService } from '../services/webhook.service.js';
 import { CreateEventDto } from '../dtos/event.dto.js';
 
@@ -28,6 +28,14 @@ export const eventController = {
     async getById(req: Request, res: Response, next: NextFunction) {
         try {
             const { id } = req.params;
+
+            if (!id || typeof id !== 'string') {
+                return res.status(400).json({
+                    success: false,
+                    message: 'id path parameter is required',
+                });
+            }
+
             const event = await webhookService.getEventById(id);
 
             if(!event) {
@@ -42,7 +50,7 @@ export const eventController = {
                 data: event, 
             });
         } catch (error) {
-            next (error):
+            next(error);
         }
     },
 

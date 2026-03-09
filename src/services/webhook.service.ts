@@ -1,9 +1,10 @@
 import prisma from "../config/db.js";
-import { createEventInput } from "../dtos/event.dto.js";
-import { deliveryQueue } from '../queue/delivery.queue';
+import type { Prisma } from '@prisma/client';
+import type { createEventInput } from "../dtos/event.dto.js";
+import { deliveryQueue } from '../queue/delivery.queue.js';
  
 export const webhookService = {
-    async publishEvent(data: CreateEventInput) {
+    async publishEvent(data: createEventInput) {
 
         const merchant = await prisma.merchant.findUnique({
             where: { id: data.merchantId},
@@ -24,7 +25,7 @@ export const webhookService = {
             data: {
                 merchantId: data.merchantId,
                 eventType: data.eventType,
-                payload: data.payload,
+                payload: data.payload as Prisma.InputJsonValue,
                 status: 'PENDING',
             },
         });
