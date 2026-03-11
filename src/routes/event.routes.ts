@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import { eventController } from '../controllers/event.controller.js';
+import { authMiddleware } from '../middlewares/auth.middleware.js';
 
 const router = Router();
 
@@ -89,7 +90,7 @@ router.post('/', eventController.publish);
  *       404:
  *         description: Event not found
  */
-router.get('/:id', eventController.getById);
+router.get('/:id', authMiddleware, eventController.getById);
 
 /**
  * @swagger
@@ -116,6 +117,6 @@ router.get('/:id', eventController.getById);
  *       400:
  *         description: merchantId is required
  */
-router.get('/', eventController.getByMerchant);
+router.get('/', authMiddleware, eventController.getByMerchant);
 
 export default router;

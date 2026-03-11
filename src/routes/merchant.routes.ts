@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import { merchantController } from '../controllers/merchant.controller.js';
+import { authMiddleware } from '../middlewares/auth.middleware.js';
 
 const router = Router();
 
@@ -88,7 +89,7 @@ router.post('/register', merchantController.register);
  *             schema:
  *               $ref: '#/components/schemas/ErrorResponse'
  */
-router.get('/:id', merchantController.getById);
+router.get('/:id', authMiddleware, merchantController.getById);
 
 /**
  * @swagger
@@ -120,6 +121,6 @@ router.get('/:id', merchantController.getById);
  *       404:
  *         description: Merchant not found
  */
-router.patch('/:id/toggle', merchantController.toggle);
+router.patch('/:id/toggle', authMiddleware, merchantController.toggle);
 
 export default router;

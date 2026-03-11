@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import { dlqController } from '../controllers/dlq.controller.js';
+import { authMiddleware } from '../middlewares/auth.middleware.js';
 
 const router = Router();
 
@@ -14,7 +15,7 @@ const router = Router();
  *       200:
  *         description: List of dead events with full delivery history
  */
-router.get('/', dlqController.getAllDeadEvents);
+router.get('/', authMiddleware, dlqController.getAllDeadEvents);
 
 /**
  * @swagger
@@ -35,7 +36,7 @@ router.get('/', dlqController.getAllDeadEvents);
  *       404:
  *         description: No DLQ entry found
  */
-router.get('/:eventId', dlqController.getDeadEventById);
+router.get('/:eventId', authMiddleware, dlqController.getDeadEventById);
 
 /**
  * @swagger
@@ -61,6 +62,6 @@ router.get('/:eventId', dlqController.getDeadEventById);
  *       409:
  *         description: Event already requeued
  */
-router.post('/:eventId/requeue', dlqController.requeueEvent);
+router.post('/:eventId/requeue', authMiddleware, dlqController.requeueEvent);
 
 export default router;
