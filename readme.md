@@ -188,7 +188,7 @@ npm run db:migrate
 npm run dev
 
 # Terminal 2 — mock merchant receiver
-npx ts-node src/mock-receiver/receiver.ts
+npm run mock
 ```
 
 ---
