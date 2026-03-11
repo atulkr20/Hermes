@@ -1,7 +1,9 @@
 import { Queue } from 'bullmq';
 import { redisConnection } from  '../config/redis.js';
 
-export const deliveryQueue = new Queue('Webhook-delivery', {
+export const DELIVERY_QUEUE_NAME = 'webhook-delivery';
+
+export const deliveryQueue = new Queue(DELIVERY_QUEUE_NAME, {
     connection: redisConnection,
     defaultJobOptions: {
         removeOnComplete: true,

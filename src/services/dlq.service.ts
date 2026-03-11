@@ -42,7 +42,7 @@ export const dlqService = {
         }
 
         if (dlqEntry.requeuedAt) {
-            throw new Error('EVENT_ALREADY_REQUIRED');
+            throw new Error('EVENT_ALREADY_REQUEUED');
         }
 
         await prisma.$transaction(async (tx) => {

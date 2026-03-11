@@ -3,7 +3,7 @@ import axios, { AxiosError } from 'axios';
 import prisma from '../config/db.js';
 import { redisConnection } from '../config/redis.js';
 import { signingService } from '../services/signing.service.js';
-import { deliveryQueue } from './delivery.queue.js';
+import { deliveryQueue, DELIVERY_QUEUE_NAME } from './delivery.queue.js';
 
 interface DeliveryJobData {
     eventId: string;
@@ -71,6 +71,7 @@ async function processDelivery(job: Job<DeliveryJobData>): Promise<void> {
                 timeout: REQUEST_TIMEOUT,
                 headers: {
                     'Content-Type': 'application/json',
+                    'X-Webhook-Signature': signature,
                     'X-Webhook-Event': event.eventType,
                     'X-Delivery-Attempt': String(attemptNumber),
                     'X-Webhook-Id': event.id,
@@ -174,7 +175,7 @@ async function processDelivery(job: Job<DeliveryJobData>): Promise<void> {
 
 // Create and export the worker
 export const deliveryWorker = new Worker<DeliveryJobData>(
-    'webhook-delivery',
+    DELIVERY_QUEUE_NAME,
     processDelivery,
     {
         connection: redisConnection,
