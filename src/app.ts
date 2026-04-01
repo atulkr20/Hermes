@@ -21,7 +21,16 @@ app.use(express.json());
 
 app.use(express.urlencoded({ extended: true }));
 
-// Public test endpoint for demos
+// GET - for browser visits
+app.get('/test-receiver', (_req: Request, res: Response) => {
+    return res.status(200).json({
+        message: 'Hermes test receiver is live',
+        usage: 'Register this URL as your merchant endpointUrl to test webhook delivery',
+        endpoint: 'https://hermes.itsatul.tech/test-receiver',
+    });
+});
+
+// POST - for actual webhook delivery
 app.post('/test-receiver', (req: Request, res: Response) => {
     console.log('Test receiver hit:', {
         event: req.headers['x-webhook-event'],
