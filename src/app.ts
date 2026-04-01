@@ -21,6 +21,23 @@ app.use(express.json());
 
 app.use(express.urlencoded({ extended: true }));
 
+// Public test endpoint for demos
+app.post('/test-receiver', (req: Request, res: Response) => {
+    console.log('Test receiver hit:', {
+        event: req.headers['x-webhook-event'],
+        attempt: req.headers['x-delivery-attempt'],
+        signature: req.headers['x-webhook-signature'],
+        payload: req.body,
+    });
+
+    return res.status(200).json({
+        received: true,
+        message: 'Webhook received successfully',
+        event: req.headers['x-webhook-event'],
+        deliveredAt: new Date().toISOString(),
+    });
+});
+
 app.get('/health', (_req: Request, res: Response) => {
     res.status(200).json({
         status: 'ok',
