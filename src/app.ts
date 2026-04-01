@@ -3,6 +3,9 @@ import type { Application, Request, Response } from 'express';
 import dotenv from 'dotenv';
 import swaggerUi from 'swagger-ui-express';
 import { swaggerSpec } from './config/swagger.js';
+import path from 'path';
+import { fileURLToPath } from 'url';
+
 
 // Routes
 import merchantRoutes from './routes/merchant.routes.js';
@@ -29,6 +32,8 @@ app.get('/health', (_req: Request, res: Response) => {
         timestamp: new Date().toISOString(),
     });
 });
+app.use('/dashboard', express.static(process.cwd() + '/src/public'));
+
 
 app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec, {
   customSiteTitle: 'Hermes API Docs',

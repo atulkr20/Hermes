@@ -20,6 +20,11 @@ const options: swaggerJsdoc.Options = {
         name: 'Hermes API',
       },
     },
+    tags: [
+      { name: 'Merchants', description: 'Merchant management APIs' },
+      { name: 'Events', description: 'Webhook event publishing and tracking APIs' },
+      { name: 'Dead Letter Queue', description: 'DLQ inspection and requeue APIs' },
+    ],
     servers: [
       {
         url: 'http://localhost:3000',
