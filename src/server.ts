@@ -2,10 +2,13 @@ import dotenv from 'dotenv';
 dotenv.config();
 
 import app from './app.js';
-
-import './queue/delivery.worker.js';
+import prisma from './config/db.js';
+import { redis } from './config/redis.js';
+import { deliveryQueue } from './queue/delivery.queue.js';
+import { deliveryWorker } from './queue/delivery.worker.js';
 
 const PORT = Number(process.env.PORT) || 3000;
+let isShuttingDown = false;
 
 const server = app.listen(PORT, () => {
     console.log('');
@@ -14,23 +17,53 @@ const server = app.listen(PORT, () => {
     console.log(`Health: http://localhost:${PORT}/health`);
 });
 
-process.on('SIGTERM', async () => {
-    console.log(' SIGTERM received - shutting down gracefully');
-
-    server.close(() => {
-        console.log('HTTP server closed');
-        process.exit(0)
+function closeHttpServer(): Promise<void> {
+    return new Promise((resolve, reject) => {
+        server.close((error?: Error) => {
+            if (error) return reject(error);
+            resolve();
+        });
     });
-});
+}
 
-process.on('SIGINT', async () => {
-    console.log(' SIGINT received - shutting down gracefully');
+async function shutdown(signal: string): Promise<void> {
+    if (isShuttingDown) return;
+    isShuttingDown = true;
 
-    server.close(() => {
+    console.log(`${signal} received - shutting down gracefully`);
+
+    try {
+        await closeHttpServer();
         console.log('HTTP server closed');
+
+        await deliveryWorker.close();
+        console.log('Delivery worker closed');
+
+        await deliveryQueue.close();
+        console.log('Delivery queue closed');
+
+        await redis.quit();
+        console.log('Redis connection closed');
+
+        await prisma.$disconnect();
+        console.log('Prisma disconnected');
+
         process.exit(0);
-    });
+    } catch (error) {
+        console.error('Error during shutdown:', error);
+        process.exit(1);
+    }
+}
+
+process.on('SIGTERM', () => {
+    void shutdown('SIGTERM');
 });
+
+process.on('SIGINT', () => {
+    void shutdown('SIGINT');
+});
+
+// Handle unhandled promise rejections
 
 // Handle unhandled promise rejections
 
