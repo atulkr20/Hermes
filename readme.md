@@ -77,7 +77,7 @@ After 5 failed attempts the event is marked `DEAD` and moved to the Dead Letter 
 | Queue       | Redis + BullMQ            |
 | Signing     | HMAC-SHA256 (crypto)      |
 | Validation  | Zod                       |
-| Docs        | Swagger / OpenAPI 3.0     |
+| Docs        | Minimal custom dashboard UI |
 | Infra       | Docker Compose            |
 
 ---
@@ -126,10 +126,9 @@ hermes/
 │   ├── config/
 │   │   ├── db.ts                  # Prisma singleton
 │   │   ├── redis.ts               # Redis connections (app + BullMQ)
-│   │   └── swagger.ts             # OpenAPI spec config
 │   ├── controllers/               # HTTP request handlers
 │   ├── services/                  # Business logic
-│   ├── routes/                    # Express routers + Swagger annotations
+│   ├── routes/                    # Express routers
 │   ├── queue/
 │   │   ├── delivery.queue.ts      # BullMQ queue instance
 │   │   └── delivery.worker.ts     # Core delivery worker with retry logic
@@ -194,11 +193,6 @@ npm run mock
 ---
 
 ## API Reference
-
-Full interactive docs available at:
-```
-http://localhost:3000/api-docs
-```
 
 ### Quick Reference
 

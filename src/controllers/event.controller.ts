@@ -65,9 +65,23 @@ export const eventController = {
                 });
             }
 
+            const allowedStatuses = ['PENDING', 'DELIVERED', 'FAILED', 'DEAD'] as const;
+            const normalizedStatus = typeof status === 'string' ? status.toUpperCase() : undefined;
+
+            if (
+                normalizedStatus &&
+                normalizedStatus !== 'ALL' &&
+                !allowedStatuses.includes(normalizedStatus as (typeof allowedStatuses)[number])
+            ) {
+                return res.status(400).json({
+                    success: false,
+                    message: 'status must be one of ALL, PENDING, DELIVERED, FAILED, DEAD',
+                });
+            }
+
             const events = await webhookService.getEventsByMerchant(
                 merchantId,
-                typeof status === 'string' ? status: undefined
+                normalizedStatus === 'ALL' ? undefined : normalizedStatus
             );
 
             return res.status(200).json({

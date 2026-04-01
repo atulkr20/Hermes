@@ -1,10 +1,6 @@
 import express from 'express';
 import type { Application, Request, Response } from 'express';
 import dotenv from 'dotenv';
-import swaggerUi from 'swagger-ui-express';
-import { swaggerSpec } from './config/swagger.js';
-import path from 'path';
-import { fileURLToPath } from 'url';
 
 
 // Routes
@@ -33,12 +29,6 @@ app.get('/health', (_req: Request, res: Response) => {
     });
 });
 app.use('/dashboard', express.static(process.cwd() + '/src/public'));
-
-
-app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec, {
-  customSiteTitle: 'Hermes API Docs',
-  customCss: '.swagger-ui .topbar { background-color: #1a1a2e; }',
-}));
 
 //API Routes
 app.use('/api/merchants', merchantRoutes);
