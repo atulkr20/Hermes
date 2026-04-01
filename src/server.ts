@@ -10,11 +10,11 @@ import { deliveryWorker } from './queue/delivery.worker.js';
 const PORT = Number(process.env.PORT) || 3000;
 let isShuttingDown = false;
 
-const server = app.listen(PORT, () => {
+const server = app.listen(PORT, '0.0.0.0', () => {
     console.log('');
-    console.log(`Hermes is runnig on port ${PORT} `);
+    console.log(`Hermes is running on port ${PORT} `);
     console.log(`Environment: ${process.env.NODE_ENV}`);
-    console.log(`Health: http://localhost:${PORT}/health`);
+    console.log(`Health check: http://0.0.0.0:${PORT}/health`);
 });
 
 function closeHttpServer(): Promise<void> {
@@ -63,9 +63,6 @@ process.on('SIGINT', () => {
     void shutdown('SIGINT');
 });
 
-// Handle unhandled promise rejections
-
-// Handle unhandled promise rejections
 
 process.on('unhandledRejection', (reason, promise) => {
     console.error('Unhandled Promise Rejection:', promise);
