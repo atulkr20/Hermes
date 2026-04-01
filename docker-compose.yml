@@ -24,7 +24,7 @@ services:
     container_name: hermes_redis
     restart: unless-stopped
     ports:
-      - '6379:6379'
+      - '6380:6380'
     volumes:
       - hermes_redis_data:/data
     command: redis-server --appendonly yes
