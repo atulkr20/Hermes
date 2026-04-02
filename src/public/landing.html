@@ -1,0 +1,638 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Hermes | Signal Storm</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Audiowide&family=Space+Grotesk:wght@400;500;700&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --bg-1: #030712;
+      --bg-2: #082032;
+      --ink: #e5fcff;
+      --muted: #9bc3cf;
+      --cyan: #00e8f7;
+      --lime: #b1ff3b;
+      --orange: #ff8e3c;
+      --danger: #ff4d6d;
+      --glass: rgba(9, 20, 36, 0.68);
+      --line: rgba(178, 252, 255, 0.24);
+      --radius: 18px;
+      --shadow: 0 26px 60px rgba(1, 6, 18, 0.56);
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: "Space Grotesk", sans-serif;
+      color: var(--ink);
+      min-height: 100vh;
+      overflow-x: hidden;
+      background:
+        radial-gradient(circle at 12% 20%, rgba(0, 232, 247, 0.26) 0%, rgba(0, 232, 247, 0) 40%),
+        radial-gradient(circle at 84% 5%, rgba(177, 255, 59, 0.19) 0%, rgba(177, 255, 59, 0) 38%),
+        radial-gradient(circle at 80% 76%, rgba(255, 142, 60, 0.24) 0%, rgba(255, 142, 60, 0) 42%),
+        linear-gradient(160deg, var(--bg-1), var(--bg-2) 56%, #041521);
+    }
+
+    .sky-noise {
+      position: fixed;
+      inset: -25vmax;
+      background-image: linear-gradient(transparent 93%, rgba(229, 252, 255, 0.06) 100%), radial-gradient(circle at center, rgba(2, 9, 28, 0.4), rgba(0, 0, 0, 0.8));
+      background-size: 100% 4px, 100% 100%;
+      mix-blend-mode: soft-light;
+      pointer-events: none;
+      animation: roll 14s linear infinite;
+      z-index: 0;
+    }
+
+    .grid {
+      position: fixed;
+      inset: 0;
+      background-image:
+        linear-gradient(to right, rgba(87, 176, 194, 0.11) 1px, transparent 1px),
+        linear-gradient(to bottom, rgba(87, 176, 194, 0.09) 1px, transparent 1px);
+      background-size: 66px 66px;
+      mask-image: radial-gradient(circle at 50% 22%, black 26%, transparent 82%);
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    main {
+      position: relative;
+      z-index: 1;
+      width: min(1160px, 92vw);
+      margin: 0 auto;
+      padding: 34px 0 84px;
+    }
+
+    .topbar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 14px;
+      margin-bottom: 42px;
+    }
+
+    .brand {
+      font-family: "Audiowide", sans-serif;
+      font-size: 1.1rem;
+      letter-spacing: 0.12em;
+      color: var(--cyan);
+      text-shadow: 0 0 15px rgba(0, 232, 247, 0.46);
+    }
+
+    .top-links {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    .chip {
+      color: var(--ink);
+      border: 1px solid var(--line);
+      background: rgba(7, 19, 34, 0.62);
+      padding: 9px 14px;
+      border-radius: 999px;
+      font-size: 0.85rem;
+      text-decoration: none;
+      transition: transform 220ms ease, border-color 220ms ease, background 220ms ease;
+    }
+
+    .chip:hover {
+      transform: translateY(-2px);
+      border-color: rgba(177, 255, 59, 0.6);
+      background: rgba(8, 27, 45, 0.75);
+    }
+
+    .hero {
+      display: grid;
+      grid-template-columns: 1.2fr 1fr;
+      gap: 24px;
+      align-items: stretch;
+    }
+
+    .panel {
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: var(--glass);
+      box-shadow: var(--shadow);
+      backdrop-filter: blur(8px);
+    }
+
+    .hero-copy {
+      padding: 30px;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .hero-copy::after {
+      content: "";
+      position: absolute;
+      width: 46%;
+      aspect-ratio: 1;
+      right: -18%;
+      top: -24%;
+      border-radius: 999px;
+      background: radial-gradient(circle, rgba(177, 255, 59, 0.28), rgba(177, 255, 59, 0));
+      animation: pulse 5s ease-in-out infinite;
+    }
+
+    .badge {
+      display: inline-flex;
+      gap: 8px;
+      align-items: center;
+      border-radius: 999px;
+      border: 1px solid rgba(0, 232, 247, 0.42);
+      padding: 7px 12px;
+      font-size: 0.78rem;
+      color: var(--muted);
+      margin-bottom: 16px;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+    }
+
+    .dot {
+      width: 9px;
+      height: 9px;
+      border-radius: 50%;
+      background: var(--lime);
+      box-shadow: 0 0 14px rgba(177, 255, 59, 0.85);
+      animation: blink 2.4s infinite;
+    }
+
+    h1 {
+      font-family: "Audiowide", sans-serif;
+      line-height: 1;
+      font-size: clamp(2.2rem, 6vw, 4.6rem);
+      text-transform: uppercase;
+      letter-spacing: 0.02em;
+      margin-bottom: 16px;
+      position: relative;
+      width: fit-content;
+    }
+
+    h1::before,
+    h1::after {
+      content: attr(data-text);
+      position: absolute;
+      inset: 0;
+      opacity: 0.45;
+      pointer-events: none;
+    }
+
+    h1::before {
+      color: var(--cyan);
+      transform: translate(2px, -1px);
+      animation: glitch 2.5s infinite;
+    }
+
+    h1::after {
+      color: var(--orange);
+      transform: translate(-2px, 1px);
+      animation: glitch 1.9s infinite reverse;
+    }
+
+    .lead {
+      color: #d2edf3;
+      max-width: 62ch;
+      line-height: 1.6;
+      margin-bottom: 22px;
+      font-size: 1.02rem;
+    }
+
+    .cta {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+    }
+
+    .btn {
+      text-decoration: none;
+      border-radius: 12px;
+      padding: 12px 18px;
+      font-weight: 700;
+      letter-spacing: 0.01em;
+      transition: transform 220ms ease, box-shadow 220ms ease, filter 220ms ease;
+      border: 1px solid transparent;
+    }
+
+    .btn:hover {
+      transform: translateY(-3px) scale(1.02);
+    }
+
+    .btn-primary {
+      background: linear-gradient(96deg, var(--cyan), #79f4ff 38%, var(--lime));
+      color: #011019;
+      box-shadow: 0 12px 30px rgba(0, 232, 247, 0.32);
+    }
+
+    .btn-secondary {
+      border-color: rgba(255, 255, 255, 0.22);
+      color: var(--ink);
+      background: rgba(255, 255, 255, 0.02);
+    }
+
+    .signal-box {
+      position: relative;
+      display: grid;
+      place-items: center;
+      padding: 26px;
+      overflow: hidden;
+      min-height: 340px;
+    }
+
+    .ring {
+      position: absolute;
+      border-radius: 50%;
+      border: 1px dashed rgba(177, 255, 59, 0.38);
+      animation: spin 17s linear infinite;
+    }
+
+    .ring.r1 { width: 340px; height: 340px; }
+    .ring.r2 { width: 262px; height: 262px; animation-duration: 13s; animation-direction: reverse; border-color: rgba(0, 232, 247, 0.42); }
+    .ring.r3 { width: 178px; height: 178px; animation-duration: 8s; border-style: solid; border-color: rgba(255, 142, 60, 0.44); }
+
+    .core {
+      width: min(56vw, 150px);
+      aspect-ratio: 1;
+      border-radius: 50%;
+      display: grid;
+      place-items: center;
+      background: radial-gradient(circle at 30% 30%, #b8ffff, #00a2bb 44%, #032637 100%);
+      box-shadow:
+        0 0 0 8px rgba(0, 232, 247, 0.2),
+        0 0 60px rgba(0, 232, 247, 0.45);
+      font-family: "Audiowide", sans-serif;
+      font-size: 1rem;
+      letter-spacing: 0.08em;
+      color: #011520;
+      z-index: 2;
+      animation: breathe 3.8s ease-in-out infinite;
+    }
+
+    .pulse {
+      position: absolute;
+      width: 40%;
+      max-width: 162px;
+      aspect-ratio: 1;
+      border-radius: 50%;
+      border: 1px solid rgba(0, 232, 247, 0.62);
+      animation: sonar 2.8s ease-out infinite;
+    }
+
+    .pulse.p2 { animation-delay: 1s; }
+    .pulse.p3 { animation-delay: 2s; }
+
+    .ticker {
+      margin: 26px 0;
+      border: 1px solid var(--line);
+      border-left: 0;
+      border-right: 0;
+      background: rgba(6, 19, 34, 0.72);
+      overflow: hidden;
+      white-space: nowrap;
+      padding: 10px 0;
+    }
+
+    .ticker-track {
+      display: inline-flex;
+      gap: 34px;
+      padding-left: 34px;
+      animation: scrollX 20s linear infinite;
+      color: #b5e2ea;
+      font-size: 0.92rem;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+    }
+
+    .cards {
+      display: grid;
+      grid-template-columns: repeat(12, minmax(0, 1fr));
+      gap: 16px;
+      margin-top: 18px;
+    }
+
+    .card {
+      grid-column: span 4;
+      padding: 22px;
+      border-radius: var(--radius);
+      border: 1px solid var(--line);
+      background: rgba(8, 24, 42, 0.62);
+      transform: translateY(26px);
+      opacity: 0;
+      transition: transform 500ms ease, opacity 500ms ease;
+    }
+
+    .card.visible {
+      transform: translateY(0);
+      opacity: 1;
+    }
+
+    .card h3 {
+      font-size: 1.02rem;
+      margin-bottom: 9px;
+    }
+
+    .card p {
+      color: #a8d5df;
+      line-height: 1.55;
+      font-size: 0.94rem;
+    }
+
+    .stats {
+      margin-top: 24px;
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 10px;
+    }
+
+    .stat {
+      border-radius: 12px;
+      border: 1px solid var(--line);
+      background: rgba(3, 16, 29, 0.8);
+      padding: 14px;
+    }
+
+    .stat strong {
+      display: block;
+      font-family: "Audiowide", sans-serif;
+      font-size: 1.2rem;
+      color: var(--lime);
+      margin-bottom: 3px;
+    }
+
+    .stat span {
+      color: #abd3dc;
+      font-size: 0.84rem;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+    }
+
+    .steps {
+      margin-top: 30px;
+      display: grid;
+      gap: 10px;
+      counter-reset: sequence;
+    }
+
+    .step {
+      display: grid;
+      grid-template-columns: auto 1fr;
+      gap: 12px;
+      align-items: start;
+      border-radius: 12px;
+      border: 1px solid var(--line);
+      background: rgba(4, 17, 31, 0.62);
+      padding: 13px;
+    }
+
+    .step::before {
+      counter-increment: sequence;
+      content: counter(sequence);
+      width: 28px;
+      height: 28px;
+      border-radius: 8px;
+      display: grid;
+      place-items: center;
+      font-family: "Audiowide", sans-serif;
+      color: #001016;
+      background: linear-gradient(130deg, var(--cyan), var(--lime));
+      margin-top: 2px;
+    }
+
+    .step p {
+      color: #cbe8ee;
+      line-height: 1.5;
+      font-size: 0.95rem;
+    }
+
+    .step code {
+      font-family: "Courier New", monospace;
+      background: rgba(0, 0, 0, 0.3);
+      border: 1px solid rgba(255, 255, 255, 0.14);
+      border-radius: 8px;
+      padding: 2px 6px;
+      color: #ddf8ff;
+    }
+
+    footer {
+      margin-top: 38px;
+      border-top: 1px solid var(--line);
+      padding-top: 20px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 10px;
+      color: #83b0bc;
+      font-size: 0.9rem;
+    }
+
+    footer a {
+      color: var(--cyan);
+      text-decoration: none;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    @keyframes breathe {
+      0%, 100% { transform: scale(0.95); }
+      50% { transform: scale(1.03); }
+    }
+
+    @keyframes sonar {
+      from { transform: scale(0.6); opacity: 0.9; }
+      to { transform: scale(2.1); opacity: 0; }
+    }
+
+    @keyframes pulse {
+      0%, 100% { transform: scale(1); opacity: 0.8; }
+      50% { transform: scale(1.18); opacity: 0.45; }
+    }
+
+    @keyframes glitch {
+      0%, 91%, 100% { clip-path: inset(0 0 0 0); }
+      92% { clip-path: inset(28% 0 58% 0); }
+      94% { clip-path: inset(62% 0 10% 0); }
+      96% { clip-path: inset(6% 0 70% 0); }
+      98% { clip-path: inset(52% 0 22% 0); }
+    }
+
+    @keyframes blink {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.2; }
+    }
+
+    @keyframes scrollX {
+      from { transform: translateX(0); }
+      to { transform: translateX(-50%); }
+    }
+
+    @keyframes roll {
+      from { transform: translateY(0); }
+      to { transform: translateY(60px); }
+    }
+
+    @media (max-width: 980px) {
+      .hero {
+        grid-template-columns: 1fr;
+      }
+
+      .cards .card {
+        grid-column: span 6;
+      }
+
+      .stats {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+    }
+
+    @media (max-width: 700px) {
+      main {
+        width: min(94vw, 720px);
+      }
+
+      .hero-copy,
+      .signal-box {
+        padding: 20px;
+      }
+
+      .cards .card {
+        grid-column: span 12;
+      }
+
+      .ticker-track {
+        gap: 22px;
+        font-size: 0.8rem;
+      }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after {
+        animation-duration: 1ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 1ms !important;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="sky-noise"></div>
+  <div class="grid"></div>
+
+  <main>
+    <header class="topbar">
+      <div class="brand">HERMES SIGNAL STORM</div>
+      <div class="top-links">
+        <a href="/dashboard" class="chip">Dashboard</a>
+        <a href="/health" class="chip">Health</a>
+        <a href="https://github.com/atulkr20/Hermes" class="chip" target="_blank" rel="noreferrer">GitHub</a>
+      </div>
+    </header>
+
+    <section class="hero">
+      <article class="panel hero-copy">
+        <div class="badge"><span class="dot"></span>Open Source Webhook Infrastructure</div>
+        <h1 data-text="Hermes">Hermes</h1>
+        <p class="lead">
+          Your events hit a kinetic relay: authenticated, signed, retried with exponential backoff, and preserved in a dead-letter black box when the world catches fire.
+        </p>
+        <div class="cta">
+          <a href="/dashboard" class="btn btn-primary">Launch Control Room</a>
+          <a href="https://github.com/atulkr20/Hermes" class="btn btn-secondary" target="_blank" rel="noreferrer">Read Source</a>
+        </div>
+      </article>
+
+      <aside class="panel signal-box" aria-label="Animated delivery signal">
+        <div class="ring r1"></div>
+        <div class="ring r2"></div>
+        <div class="ring r3"></div>
+        <div class="pulse"></div>
+        <div class="pulse p2"></div>
+        <div class="pulse p3"></div>
+        <div class="core">LIVE</div>
+      </aside>
+    </section>
+
+    <section class="ticker" aria-label="Event stream ticker">
+      <div class="ticker-track">
+        <span>Event Ingested</span>
+        <span>HMAC Signed</span>
+        <span>Queue Locked</span>
+        <span>Delivery Attempt #1</span>
+        <span>Response 200</span>
+        <span>Audit Logged</span>
+        <span>Dead Letter Recovery Ready</span>
+        <span>Event Ingested</span>
+        <span>HMAC Signed</span>
+        <span>Queue Locked</span>
+        <span>Delivery Attempt #1</span>
+        <span>Response 200</span>
+        <span>Audit Logged</span>
+        <span>Dead Letter Recovery Ready</span>
+      </div>
+    </section>
+
+    <section class="cards">
+      <article class="card reveal" style="transition-delay: 70ms;">
+        <h3>Cryptographic Armor</h3>
+        <p>Every payload ships with HMAC-SHA256 signatures so receivers can verify authenticity before touching business logic.</p>
+      </article>
+      <article class="card reveal" style="transition-delay: 140ms;">
+        <h3>Adaptive Retry Matrix</h3>
+        <p>Retries fan out over 1m, 5m, 30m, and 2h to absorb transient outages without flooding downstream systems.</p>
+      </article>
+      <article class="card reveal" style="transition-delay: 210ms;">
+        <h3>Failure Is Preserved</h3>
+        <p>After the fifth strike, events are sealed into DLQ with traceable reason codes and one-click requeue control.</p>
+      </article>
+    </section>
+
+    <section class="stats">
+      <div class="stat"><strong>5</strong><span>Max Attempts</span></div>
+      <div class="stat"><strong>1-120m</strong><span>Backoff Range</span></div>
+      <div class="stat"><strong>HMAC</strong><span>Signature Mode</span></div>
+      <div class="stat"><strong>100%</strong><span>Attempt Logging</span></div>
+    </section>
+
+    <section class="steps">
+      <div class="step">
+        <p>Register a merchant endpoint like <code>https://hermes.itsatul.tech/test-receiver</code> and capture the generated merchant id.</p>
+      </div>
+      <div class="step">
+        <p>Publish an event using your chosen <code>eventType</code>, for example <code>payment.success</code>, through the API.</p>
+      </div>
+      <div class="step">
+        <p>Watch real-time delivery, retries, and final state transitions inside the dashboard control room.</p>
+      </div>
+    </section>
+
+    <footer>
+      <span>Built by <a href="https://linkedin.com/in/atulkr20" target="_blank" rel="noreferrer">Atul Kumar</a></span>
+      <span>Node.js · TypeScript · Redis · BullMQ · Prisma · PostgreSQL</span>
+    </footer>
+  </main>
+
+  <script>
+    const revealNodes = document.querySelectorAll('.reveal');
+    const observer = new IntersectionObserver((entries) => {
+      entries.forEach((entry) => {
+        if (entry.isIntersecting) {
+          entry.target.classList.add('visible');
+        }
+      });
+    }, { threshold: 0.18 });
+
+    revealNodes.forEach((node) => observer.observe(node));
+  </script>
+</body>
+</html>
