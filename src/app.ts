@@ -1,6 +1,7 @@
 import express from 'express';
 import type { Application, Request, Response } from 'express';
 import dotenv from 'dotenv';
+import path from 'node:path';
 
 
 // Routes
@@ -14,12 +15,19 @@ import { errorMiddleware } from './middlewares/error.middleware.js';
 dotenv.config();
 
 const app: Application = express();
+const dashboardPublicDirectory = path.join(process.cwd(), 'src', 'public');
 
 //Global Middlewares
 
 app.use(express.json());
 
 app.use(express.urlencoded({ extended: true }));
+
+app.use('/dashboard', express.static(dashboardPublicDirectory));
+
+app.get('/dashboard', (_req: Request, res: Response) => {
+    return res.sendFile(path.join(dashboardPublicDirectory, 'index.html'));
+});
 
 // for browser visits
 app.get('/test-receiver', (_req: Request, res: Response) => {
@@ -28,8 +36,6 @@ app.get('/test-receiver', (_req: Request, res: Response) => {
         usage: 'Register this URL as your merchant endpointUrl to test webhook delivery',
         endpoint: 'https://hermes.itsatul.tech/test-receiver',
     });
-app.use('/dashboard', express.static(process.cwd() + '/src/public'));
-
 });
 
 // for actual webhook delivery
