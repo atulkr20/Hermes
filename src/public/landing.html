@@ -3,636 +3,820 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Hermes | Signal Storm</title>
+  <title>Hermes — Webhook Delivery Infrastructure</title>
+  <meta name="description" content="Production-grade webhook delivery. HMAC-signed, queue-backed, retried. Your events reach their destination." />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Audiowide&family=Space+Grotesk:wght@400;500;700&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,500;12..96,700;12..96,800&family=Inter:wght@400;500;600&display=swap" rel="stylesheet" />
   <style>
     :root {
-      --bg-1: #030712;
-      --bg-2: #082032;
-      --ink: #e5fcff;
-      --muted: #9bc3cf;
-      --cyan: #00e8f7;
-      --lime: #b1ff3b;
-      --orange: #ff8e3c;
-      --danger: #ff4d6d;
-      --glass: rgba(9, 20, 36, 0.68);
-      --line: rgba(178, 252, 255, 0.24);
-      --radius: 18px;
-      --shadow: 0 26px 60px rgba(1, 6, 18, 0.56);
+      --bg:       #09090b;
+      --surface:  #111113;
+      --border:   rgba(255,255,255,0.07);
+      --gold:     #f59e0b;
+      --gold-dim: rgba(245,158,11,0.15);
+      --gold-glow:rgba(245,158,11,0.35);
+      --green:    #34d399;
+      --red:      #f43f5e;
+      --amber:    #fb923c;
+      --text:     #f4f4f5;
+      --muted:    #71717a;
+      --dim:      #3f3f46;
+      --display:  'Bricolage Grotesque', sans-serif;
+      --body:     'Inter', sans-serif;
     }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html { scroll-behavior: smooth; }
+    body { font-family: var(--body); background: var(--bg); color: var(--text); overflow-x: hidden; }
 
-    * {
-      box-sizing: border-box;
-      margin: 0;
-      padding: 0;
+    /* NAV */
+    nav {
+      position: fixed; top: 0; left: 0; right: 0; z-index: 200;
+      padding: 0 40px;
+      height: 60px;
+      display: flex; align-items: center; justify-content: space-between;
+      background: rgba(9,9,11,0.7);
+      backdrop-filter: blur(20px);
+      border-bottom: 1px solid var(--border);
     }
-
-    body {
-      font-family: "Space Grotesk", sans-serif;
-      color: var(--ink);
-      min-height: 100vh;
-      overflow-x: hidden;
-      background:
-        radial-gradient(circle at 12% 20%, rgba(0, 232, 247, 0.26) 0%, rgba(0, 232, 247, 0) 40%),
-        radial-gradient(circle at 84% 5%, rgba(177, 255, 59, 0.19) 0%, rgba(177, 255, 59, 0) 38%),
-        radial-gradient(circle at 80% 76%, rgba(255, 142, 60, 0.24) 0%, rgba(255, 142, 60, 0) 42%),
-        linear-gradient(160deg, var(--bg-1), var(--bg-2) 56%, #041521);
+    .nav-logo {
+      font-family: var(--display);
+      font-size: 1.15rem; font-weight: 800;
+      color: var(--text); text-decoration: none;
+      display: flex; align-items: center; gap: 10px;
     }
-
-    .sky-noise {
-      position: fixed;
-      inset: -25vmax;
-      background-image: linear-gradient(transparent 93%, rgba(229, 252, 255, 0.06) 100%), radial-gradient(circle at center, rgba(2, 9, 28, 0.4), rgba(0, 0, 0, 0.8));
-      background-size: 100% 4px, 100% 100%;
-      mix-blend-mode: soft-light;
-      pointer-events: none;
-      animation: roll 14s linear infinite;
-      z-index: 0;
+    .nav-logo-mark {
+      width: 30px; height: 30px; border-radius: 8px;
+      background: var(--gold);
+      display: grid; place-items: center;
+      font-size: 0.8rem; font-weight: 800;
+      color: var(--bg);
+      box-shadow: 0 0 20px var(--gold-glow);
     }
-
-    .grid {
-      position: fixed;
-      inset: 0;
-      background-image:
-        linear-gradient(to right, rgba(87, 176, 194, 0.11) 1px, transparent 1px),
-        linear-gradient(to bottom, rgba(87, 176, 194, 0.09) 1px, transparent 1px);
-      background-size: 66px 66px;
-      mask-image: radial-gradient(circle at 50% 22%, black 26%, transparent 82%);
-      pointer-events: none;
-      z-index: 0;
+    .nav-links { display: flex; align-items: center; gap: 6px; }
+    .nav-a {
+      font-size: 0.84rem; font-weight: 500;
+      color: var(--muted); text-decoration: none;
+      padding: 7px 14px; border-radius: 8px;
+      transition: color .2s, background .2s;
     }
-
-    main {
-      position: relative;
-      z-index: 1;
-      width: min(1160px, 92vw);
-      margin: 0 auto;
-      padding: 34px 0 84px;
+    .nav-a:hover { color: var(--text); background: rgba(255,255,255,0.05); }
+    .nav-a.cta {
+      background: var(--gold); color: var(--bg);
+      font-weight: 600; border-radius: 8px;
     }
+    .nav-a.cta:hover { background: #fbbf24; color: var(--bg); }
+    .nav-status { display: flex; align-items: center; gap: 7px; font-size: 0.75rem; color: var(--green); font-weight: 500; }
+    .pulse-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--green); box-shadow: 0 0 8px var(--green); animation: pdot 2s ease-in-out infinite; }
 
-    .topbar {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      gap: 14px;
-      margin-bottom: 42px;
-    }
-
-    .brand {
-      font-family: "Audiowide", sans-serif;
-      font-size: 1.1rem;
-      letter-spacing: 0.12em;
-      color: var(--cyan);
-      text-shadow: 0 0 15px rgba(0, 232, 247, 0.46);
-    }
-
-    .top-links {
-      display: flex;
-      gap: 12px;
-      flex-wrap: wrap;
-    }
-
-    .chip {
-      color: var(--ink);
-      border: 1px solid var(--line);
-      background: rgba(7, 19, 34, 0.62);
-      padding: 9px 14px;
-      border-radius: 999px;
-      font-size: 0.85rem;
-      text-decoration: none;
-      transition: transform 220ms ease, border-color 220ms ease, background 220ms ease;
-    }
-
-    .chip:hover {
-      transform: translateY(-2px);
-      border-color: rgba(177, 255, 59, 0.6);
-      background: rgba(8, 27, 45, 0.75);
-    }
-
+    /* HERO */
     .hero {
-      display: grid;
-      grid-template-columns: 1.2fr 1fr;
-      gap: 24px;
-      align-items: stretch;
+      position: relative; height: 100vh; min-height: 640px;
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      text-align: center; overflow: hidden;
     }
-
-    .panel {
-      border: 1px solid var(--line);
-      border-radius: var(--radius);
-      background: var(--glass);
-      box-shadow: var(--shadow);
-      backdrop-filter: blur(8px);
+    #constellation { position: absolute; inset: 0; z-index: 0; }
+    .hero-scrim {
+      position: absolute; inset: 0; z-index: 1;
+      background: radial-gradient(ellipse at center, rgba(9,9,11,0.2) 0%, rgba(9,9,11,0.85) 70%);
     }
+    .hero-content { position: relative; z-index: 2; padding: 0 24px; max-width: 820px; }
+    .hero-badge {
+      display: inline-flex; align-items: center; gap: 8px;
+      padding: 6px 14px; border-radius: 999px;
+      border: 1px solid rgba(245,158,11,0.3);
+      background: rgba(245,158,11,0.08);
+      font-size: 0.75rem; font-weight: 600;
+      color: var(--gold); letter-spacing: 0.04em;
+      margin-bottom: 28px;
+    }
+    .hero-badge-dot { width: 6px; height: 6px; background: var(--gold); border-radius: 50%; box-shadow: 0 0 8px var(--gold); animation: pdot 1.8s infinite; }
+    .hero-h1 {
+      font-family: var(--display);
+      font-size: clamp(2.8rem, 7vw, 5.6rem);
+      font-weight: 800; line-height: 1.05;
+      letter-spacing: -0.03em;
+      margin-bottom: 22px;
+    }
+    .hero-h1 .grad {
+      background: linear-gradient(135deg, #f59e0b 0%, #fcd34d 50%, #fb923c 100%);
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
+    }
+    .hero-sub {
+      font-size: 1.05rem; color: var(--muted); line-height: 1.7;
+      max-width: 54ch; margin: 0 auto 36px;
+    }
+    .hero-sub strong { color: var(--text); font-weight: 600; }
+    .hero-btns { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; }
+    .btn {
+      display: inline-flex; align-items: center; gap: 8px;
+      font-family: var(--body); font-size: 0.9rem; font-weight: 600;
+      padding: 13px 26px; border-radius: 10px;
+      text-decoration: none; transition: all .2s; border: 1px solid transparent;
+    }
+    .btn-gold { background: var(--gold); color: var(--bg); box-shadow: 0 0 30px var(--gold-glow); }
+    .btn-gold:hover { background: #fbbf24; transform: translateY(-2px); box-shadow: 0 0 45px var(--gold-glow); }
+    .btn-ghost { background: rgba(255,255,255,0.05); color: var(--text); border-color: var(--border); }
+    .btn-ghost:hover { background: rgba(255,255,255,0.09); transform: translateY(-2px); }
+    .hero-scroll {
+      position: absolute; bottom: 36px; left: 50%; transform: translateX(-50%);
+      z-index: 2; font-size: 0.72rem; color: var(--dim);
+      letter-spacing: 0.1em; display: flex; flex-direction: column; align-items: center; gap: 8px;
+      animation: float 2.5s ease-in-out infinite;
+    }
+    .scroll-line { width: 1px; height: 36px; background: linear-gradient(var(--dim), transparent); }
 
-    .hero-copy {
-      padding: 30px;
-      position: relative;
+    /* PIPELINE */
+    .pipeline-wrap {
+      padding: 60px 40px;
+      border-top: 1px solid var(--border);
+      border-bottom: 1px solid var(--border);
+    }
+    .section-eyebrow {
+      font-size: 0.72rem; font-weight: 600; letter-spacing: 0.12em;
+      text-transform: uppercase; color: var(--gold);
+      margin-bottom: 10px;
+    }
+    .section-title {
+      font-family: var(--display);
+      font-size: clamp(1.6rem, 3vw, 2.4rem);
+      font-weight: 800; letter-spacing: -0.03em;
+      margin-bottom: 10px;
+    }
+    .section-sub { font-size: 0.9rem; color: var(--muted); max-width: 56ch; line-height: 1.7; margin-bottom: 40px; }
+    .pipeline-canvas-wrap {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 16px; overflow: hidden;
+      padding: 28px 32px 20px;
+    }
+    .pipeline-live { display: flex; align-items: center; gap: 6px; font-size: 0.72rem; font-weight: 600; color: var(--green); }
+
+    /* Step Pipeline */
+    .pipe-row { display: flex; align-items: flex-start; padding: 24px 0 16px; gap: 0; }
+    .pipe-step { display: flex; flex-direction: column; align-items: center; gap: 10px; flex: 0 0 auto; position: relative; width: 96px; }
+    .pipe-step-ring { position: absolute; top: -10px; width: 64px; height: 64px; border-radius: 50%; border: 1px solid var(--gold); opacity: 0; transform: scale(0.7); transition: all 0.5s cubic-bezier(0.16,1,0.3,1); pointer-events: none; }
+    .pipe-step.active .pipe-step-ring { opacity: 0.35; transform: scale(1); animation: ring-pop 1.6s ease-in-out infinite; }
+    .pipe-circle { width: 44px; height: 44px; border-radius: 50%; border: 1.5px solid var(--border); background: var(--surface); display: grid; place-items: center; font-size: 0.88rem; font-weight: 700; color: var(--dim); transition: all 0.45s cubic-bezier(0.16,1,0.3,1); position: relative; z-index: 2; }
+    .pipe-step.active .pipe-circle { border-color: var(--gold); background: rgba(245,158,11,0.1); color: var(--gold); box-shadow: 0 0 0 5px rgba(245,158,11,0.07), 0 0 24px rgba(245,158,11,0.2); }
+    .pipe-step.done .pipe-circle { border-color: var(--green); background: rgba(52,211,153,0.08); color: var(--green); }
+    .pipe-num { font-size: 0.88rem; } .pipe-check { display: none; }
+    .pipe-step.done .pipe-num { display: none; } .pipe-step.done .pipe-check { display: block; }
+    .pipe-lbl { font-size: 0.74rem; font-weight: 700; color: var(--dim); transition: color 0.4s; text-align: center; line-height: 1.3; }
+    .pipe-step.active .pipe-lbl { color: var(--gold); }
+    .pipe-step.done .pipe-lbl { color: var(--green); }
+    .pipe-desc { font-size: 0.62rem; color: var(--dim); text-align: center; line-height: 1.45; max-width: 80px; opacity: 0.5; transition: opacity 0.4s, color 0.4s; }
+    .pipe-step.active .pipe-desc { opacity: 1; color: rgba(245,158,11,0.7); }
+    .pipe-step.done .pipe-desc { opacity: 0.7; color: var(--green); }
+    .pipe-connector { flex: 1; margin-top: 22px; height: 2px; background: var(--border); position: relative; overflow: hidden; min-width: 12px; border-radius: 2px; }
+    .pipe-connector-fill { position: absolute; inset: 0; background: linear-gradient(90deg, var(--green), rgba(52,211,153,0.5)); box-shadow: 0 0 10px rgba(52,211,153,0.4); width: 0%; transition: width 0.7s cubic-bezier(0.16,1,0.3,1); border-radius: 2px; }
+    .pipe-connector.filled .pipe-connector-fill { width: 100%; }
+    .pipe-event-bar { display: flex; align-items: center; gap: 10px; background: rgba(245,158,11,0.04); border: 1px solid rgba(245,158,11,0.14); border-radius: 10px; padding: 13px 18px; margin-top: 6px; min-height: 46px; }
+    .peb-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--gold); box-shadow: 0 0 8px var(--gold-glow); flex-shrink: 0; animation: pdot 1.8s infinite; }
+    .peb-text { font-size: 0.8rem; color: var(--muted); line-height: 1.4; }
+    .peb-text strong { color: var(--text); font-weight: 600; }
+    .peb-step { margin-left: auto; font-size: 0.68rem; color: var(--gold); font-weight: 700; background: rgba(245,158,11,0.1); padding: 4px 12px; border-radius: 20px; white-space: nowrap; flex-shrink: 0; }
+    @keyframes ring-pop { 0%,100% { transform: scale(1); opacity: 0.35; } 50% { transform: scale(1.2); opacity: 0.12; } }
+
+    /* LOG */
+    .log-wrap {
+      margin-top: 20px;
+      background: rgba(0,0,0,0.4);
+      border: 1px solid var(--border);
+      border-radius: 12px;
       overflow: hidden;
     }
-
-    .hero-copy::after {
-      content: "";
-      position: absolute;
-      width: 46%;
-      aspect-ratio: 1;
-      right: -18%;
-      top: -24%;
-      border-radius: 999px;
-      background: radial-gradient(circle, rgba(177, 255, 59, 0.28), rgba(177, 255, 59, 0));
-      animation: pulse 5s ease-in-out infinite;
+    .log-bar {
+      padding: 8px 16px; border-bottom: 1px solid var(--border);
+      display: flex; justify-content: space-between; align-items: center;
     }
-
-    .badge {
-      display: inline-flex;
-      gap: 8px;
-      align-items: center;
-      border-radius: 999px;
-      border: 1px solid rgba(0, 232, 247, 0.42);
-      padding: 7px 12px;
-      font-size: 0.78rem;
-      color: var(--muted);
-      margin-bottom: 16px;
-      letter-spacing: 0.06em;
-      text-transform: uppercase;
-    }
-
-    .dot {
-      width: 9px;
-      height: 9px;
-      border-radius: 50%;
-      background: var(--lime);
-      box-shadow: 0 0 14px rgba(177, 255, 59, 0.85);
-      animation: blink 2.4s infinite;
-    }
-
-    h1 {
-      font-family: "Audiowide", sans-serif;
-      line-height: 1;
-      font-size: clamp(2.2rem, 6vw, 4.6rem);
-      text-transform: uppercase;
-      letter-spacing: 0.02em;
-      margin-bottom: 16px;
-      position: relative;
-      width: fit-content;
-    }
-
-    h1::before,
-    h1::after {
-      content: attr(data-text);
-      position: absolute;
-      inset: 0;
-      opacity: 0.45;
+    .log-bar-title { font-size: 0.68rem; color: var(--muted); font-weight: 500; letter-spacing: 0.06em; }
+    .log-entries { padding: 8px 0; height: 130px; overflow: hidden; position: relative; }
+    .log-entries::after {
+      content: ''; position: absolute; bottom: 0; left: 0; right: 0;
+      height: 50px; background: linear-gradient(transparent, rgba(0,0,0,0.4));
       pointer-events: none;
     }
+    #log-ul { list-style: none; padding: 0; }
+    .log-row { display: flex; gap: 12px; align-items: baseline; padding: 5px 16px; font-size: 0.72rem; animation: logslide .25s ease; }
+    .log-row:hover { background: rgba(255,255,255,0.03); }
+    .l-ts { color: var(--dim); width: 85px; flex-shrink: 0; font-variant-numeric: tabular-nums; }
+    .l-lv { width: 42px; font-weight: 700; flex-shrink: 0; }
+    .l-lv.ok { color: var(--green); } .l-lv.info { color: #60a5fa; } .l-lv.warn { color: var(--amber); } .l-lv.err { color: var(--red); }
+    .l-msg { color: var(--muted); } .l-msg em { color: var(--text); font-style: normal; }
 
-    h1::before {
-      color: var(--cyan);
-      transform: translate(2px, -1px);
-      animation: glitch 2.5s infinite;
-    }
-
-    h1::after {
-      color: var(--orange);
-      transform: translate(-2px, 1px);
-      animation: glitch 1.9s infinite reverse;
-    }
-
-    .lead {
-      color: #d2edf3;
-      max-width: 62ch;
-      line-height: 1.6;
-      margin-bottom: 22px;
-      font-size: 1.02rem;
-    }
-
-    .cta {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 12px;
-    }
-
-    .btn {
-      text-decoration: none;
-      border-radius: 12px;
-      padding: 12px 18px;
-      font-weight: 700;
-      letter-spacing: 0.01em;
-      transition: transform 220ms ease, box-shadow 220ms ease, filter 220ms ease;
-      border: 1px solid transparent;
-    }
-
-    .btn:hover {
-      transform: translateY(-3px) scale(1.02);
-    }
-
-    .btn-primary {
-      background: linear-gradient(96deg, var(--cyan), #79f4ff 38%, var(--lime));
-      color: #011019;
-      box-shadow: 0 12px 30px rgba(0, 232, 247, 0.32);
-    }
-
-    .btn-secondary {
-      border-color: rgba(255, 255, 255, 0.22);
-      color: var(--ink);
-      background: rgba(255, 255, 255, 0.02);
-    }
-
-    .signal-box {
-      position: relative;
+    /* FEATURES */
+    .features-section { padding: 80px 40px; border-bottom: 1px solid var(--border); }
+    .feat-grid {
       display: grid;
-      place-items: center;
-      padding: 26px;
-      overflow: hidden;
-      min-height: 340px;
-    }
-
-    .ring {
-      position: absolute;
-      border-radius: 50%;
-      border: 1px dashed rgba(177, 255, 59, 0.38);
-      animation: spin 17s linear infinite;
-    }
-
-    .ring.r1 { width: 340px; height: 340px; }
-    .ring.r2 { width: 262px; height: 262px; animation-duration: 13s; animation-direction: reverse; border-color: rgba(0, 232, 247, 0.42); }
-    .ring.r3 { width: 178px; height: 178px; animation-duration: 8s; border-style: solid; border-color: rgba(255, 142, 60, 0.44); }
-
-    .core {
-      width: min(56vw, 150px);
-      aspect-ratio: 1;
-      border-radius: 50%;
-      display: grid;
-      place-items: center;
-      background: radial-gradient(circle at 30% 30%, #b8ffff, #00a2bb 44%, #032637 100%);
-      box-shadow:
-        0 0 0 8px rgba(0, 232, 247, 0.2),
-        0 0 60px rgba(0, 232, 247, 0.45);
-      font-family: "Audiowide", sans-serif;
-      font-size: 1rem;
-      letter-spacing: 0.08em;
-      color: #011520;
-      z-index: 2;
-      animation: breathe 3.8s ease-in-out infinite;
-    }
-
-    .pulse {
-      position: absolute;
-      width: 40%;
-      max-width: 162px;
-      aspect-ratio: 1;
-      border-radius: 50%;
-      border: 1px solid rgba(0, 232, 247, 0.62);
-      animation: sonar 2.8s ease-out infinite;
-    }
-
-    .pulse.p2 { animation-delay: 1s; }
-    .pulse.p3 { animation-delay: 2s; }
-
-    .ticker {
-      margin: 26px 0;
-      border: 1px solid var(--line);
-      border-left: 0;
-      border-right: 0;
-      background: rgba(6, 19, 34, 0.72);
-      overflow: hidden;
-      white-space: nowrap;
-      padding: 10px 0;
-    }
-
-    .ticker-track {
-      display: inline-flex;
-      gap: 34px;
-      padding-left: 34px;
-      animation: scrollX 20s linear infinite;
-      color: #b5e2ea;
-      font-size: 0.92rem;
-      text-transform: uppercase;
-      letter-spacing: 0.08em;
-    }
-
-    .cards {
-      display: grid;
-      grid-template-columns: repeat(12, minmax(0, 1fr));
+      grid-template-columns: repeat(3, 1fr);
       gap: 16px;
-      margin-top: 18px;
     }
-
-    .card {
-      grid-column: span 4;
-      padding: 22px;
-      border-radius: var(--radius);
-      border: 1px solid var(--line);
-      background: rgba(8, 24, 42, 0.62);
-      transform: translateY(26px);
-      opacity: 0;
-      transition: transform 500ms ease, opacity 500ms ease;
+    .feat-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 30px 26px;
+      position: relative; overflow: hidden;
+      transition: border-color .25s, transform .25s;
     }
-
-    .card.visible {
-      transform: translateY(0);
-      opacity: 1;
+    .feat-card::after {
+      content: ''; position: absolute; top: 0; left: 0; right: 0; height: 1px;
+      background: linear-gradient(90deg, transparent, var(--gold), transparent);
+      opacity: 0; transition: opacity .3s;
     }
-
-    .card h3 {
-      font-size: 1.02rem;
-      margin-bottom: 9px;
+    .feat-card:hover { border-color: var(--dim); transform: translateY(-3px); }
+    .feat-card:hover::after { opacity: 1; }
+    .feat-icon {
+      width: 42px; height: 42px; border-radius: 10px;
+      background: var(--gold-dim); display: grid; place-items: center;
+      margin-bottom: 18px; font-size: 1.2rem;
     }
+    .feat-title { font-family: var(--display); font-size: 1.05rem; font-weight: 700; margin-bottom: 10px; letter-spacing: -0.02em; }
+    .feat-body { font-size: 0.82rem; color: var(--muted); line-height: 1.7; }
+    .feat-body code { color: var(--gold); font-size: 0.78rem; font-family: 'Courier New', monospace; background: var(--gold-dim); padding: 1px 5px; border-radius: 4px; }
 
-    .card p {
-      color: #a8d5df;
-      line-height: 1.55;
-      font-size: 0.94rem;
+    /* STATS */
+    .stats-section {
+      display: grid; grid-template-columns: repeat(4, 1fr);
+      border-bottom: 1px solid var(--border);
     }
-
-    .stats {
-      margin-top: 24px;
-      display: grid;
-      grid-template-columns: repeat(4, minmax(0, 1fr));
-      gap: 10px;
+    .stat-card {
+      padding: 40px 36px;
+      border-right: 1px solid var(--border);
+      transition: background .2s;
     }
-
-    .stat {
-      border-radius: 12px;
-      border: 1px solid var(--line);
-      background: rgba(3, 16, 29, 0.8);
-      padding: 14px;
+    .stat-card:last-child { border-right: none; }
+    .stat-card:hover { background: var(--surface); }
+    .stat-num {
+      font-family: var(--display); font-size: 3rem; font-weight: 800;
+      letter-spacing: -0.04em; color: var(--text); line-height: 1;
+      margin-bottom: 8px;
     }
+    .stat-num sup { font-size: 1.2rem; color: var(--gold); vertical-align: super; }
+    .stat-lbl { font-size: 0.75rem; color: var(--muted); font-weight: 500; letter-spacing: 0.04em; }
 
-    .stat strong {
-      display: block;
-      font-family: "Audiowide", sans-serif;
-      font-size: 1.2rem;
-      color: var(--lime);
-      margin-bottom: 3px;
+    /* RELIABILITY */
+    .reliability-section {
+      padding: 80px 40px;
+      display: grid; grid-template-columns: 1fr 1fr;
+      gap: 60px; align-items: center;
+      border-bottom: 1px solid var(--border);
     }
-
-    .stat span {
-      color: #abd3dc;
-      font-size: 0.84rem;
-      text-transform: uppercase;
-      letter-spacing: 0.08em;
+    .retry-visual { background: var(--surface); border: 1px solid var(--border); border-radius: 16px; overflow: hidden; }
+    .retry-head { padding: 20px 24px; border-bottom: 1px solid var(--border); font-size: 0.72rem; color: var(--muted); font-weight: 500; letter-spacing: 0.06em; }
+    .retry-item { display: flex; align-items: center; gap: 16px; padding: 18px 24px; border-bottom: 1px solid var(--border); transition: background .2s; }
+    .retry-item:last-child { border-bottom: none; }
+    .retry-item:hover { background: rgba(255,255,255,0.03); }
+    .retry-badge {
+      width: 28px; height: 28px; border-radius: 8px; flex-shrink: 0;
+      display: grid; place-items: center;
+      font-size: 0.72rem; font-weight: 700;
+      background: var(--gold-dim); color: var(--gold);
     }
+    .retry-badge.dlq { background: rgba(244,63,94,0.12); color: var(--red); }
+    .retry-info { flex: 1; }
+    .retry-label { font-size: 0.82rem; font-weight: 600; margin-bottom: 6px; }
+    .retry-bar-bg { height: 3px; background: var(--dim); border-radius: 2px; }
+    .retry-bar-fg { height: 100%; border-radius: 2px; background: var(--gold); box-shadow: 0 0 6px var(--gold-glow); }
+    .retry-time { font-size: 0.72rem; color: var(--muted); font-weight: 500; white-space: nowrap; }
 
-    .steps {
-      margin-top: 30px;
-      display: grid;
-      gap: 10px;
-      counter-reset: sequence;
+    /* API */
+    .api-section { padding: 80px 40px; border-bottom: 1px solid var(--border); }
+    .api-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 40px; }
+    .ep-list { display: flex; flex-direction: column; gap: 6px; margin-top: 8px; }
+    .ep { display: flex; align-items: center; gap: 12px; padding: 14px 18px; border-radius: 10px; border: 1px solid var(--border); background: var(--surface); transition: border-color .2s, background .2s; }
+    .ep:hover { border-color: var(--dim); background: rgba(255,255,255,0.03); }
+    .ep-m { font-size: 0.65rem; font-weight: 700; letter-spacing: 0.06em; padding: 3px 8px; border-radius: 5px; flex-shrink: 0; }
+    .ep-m.get { background: rgba(52,211,153,0.12); color: var(--green); }
+    .ep-m.post { background: rgba(96,165,250,0.12); color: #60a5fa; }
+    .ep-m.patch { background: rgba(251,146,60,0.12); color: var(--amber); }
+    .ep-path { font-size: 0.8rem; color: var(--text); font-family: 'Courier New', monospace; }
+    .ep-desc { font-size: 0.72rem; color: var(--muted); margin-left: auto; text-align: right; max-width: 20ch; display: none; }
+
+    .code-box { background: #0d0d0f; border: 1px solid var(--border); border-radius: 14px; overflow: hidden; }
+    .code-box-bar { padding: 12px 16px; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; }
+    .code-box-title { font-size: 0.72rem; color: var(--muted); font-weight: 500; }
+    .code-dots { display: flex; gap: 6px; }
+    .cd { width: 10px; height: 10px; border-radius: 50%; }
+    .cd:nth-child(1) { background: var(--red); } .cd:nth-child(2) { background: var(--amber); } .cd:nth-child(3) { background: var(--green); }
+    pre { padding: 24px; font-size: 0.8rem; line-height: 1.8; overflow-x: auto; font-family: 'Courier New', monospace; color: #a1a1aa; }
+    .ck { color: #c084fc; } .cf { color: #60a5fa; } .cs { color: var(--green); } .cc { color: #52525b; font-style: italic; }
+
+    /* STACK */
+    .stack-section { padding: 60px 40px; border-bottom: 1px solid var(--border); display: flex; gap: 40px; align-items: center; flex-wrap: wrap; }
+    .stack-label { font-size: 0.85rem; color: var(--muted); font-weight: 500; white-space: nowrap; }
+    .stack-tags { display: flex; flex-wrap: wrap; gap: 8px; }
+    .tag { padding: 7px 14px; border-radius: 8px; border: 1px solid var(--border); font-size: 0.78rem; color: var(--muted); font-weight: 500; transition: all .2s; }
+    .tag:hover { border-color: var(--gold); color: var(--gold); background: var(--gold-dim); }
+
+    /* FOOTER (Old generic footer styles removed) */
+
+    /* KEYFRAMES */
+    @keyframes pdot { 0%,100%{opacity:1} 50%{opacity:0.3} }
+    @keyframes float { 0%,100%{transform:translateX(-50%) translateY(0)} 50%{transform:translateX(-50%) translateY(-6px)} }
+    @keyframes logslide { from{opacity:0;transform:translateY(-8px)} to{opacity:1;transform:translateY(0)} }
+
+    .footer { background: var(--surface); border-top: 1px solid var(--border); }
+    .footer-conclusion {
+      padding: 100px 40px 80px;
+      text-align: center;
+      position: relative;
+      overflow: hidden;
     }
-
-    .step {
-      display: grid;
-      grid-template-columns: auto 1fr;
-      gap: 12px;
-      align-items: start;
-      border-radius: 12px;
-      border: 1px solid var(--line);
-      background: rgba(4, 17, 31, 0.62);
-      padding: 13px;
+    .footer-conclusion::before {
+      content: '';
+      position: absolute;
+      top: -60px; left: 50%; transform: translateX(-50%);
+      width: 600px; height: 300px;
+      background: radial-gradient(ellipse, rgba(245,158,11,0.1) 0%, transparent 70%);
+      pointer-events: none;
     }
-
-    .step::before {
-      counter-increment: sequence;
-      content: counter(sequence);
-      width: 28px;
-      height: 28px;
-      border-radius: 8px;
-      display: grid;
-      place-items: center;
-      font-family: "Audiowide", sans-serif;
-      color: #001016;
-      background: linear-gradient(130deg, var(--cyan), var(--lime));
-      margin-top: 2px;
+    .fc-eyebrow { font-size: 0.72rem; font-weight: 600; letter-spacing: 0.12em; text-transform: uppercase; color: var(--gold); margin-bottom: 20px; }
+    .fc-headline { font-family: var(--display); font-size: clamp(2rem, 5vw, 3.8rem); font-weight: 800; letter-spacing: -0.03em; line-height: 1.1; margin-bottom: 18px; }
+    .fc-headline .dim { color: var(--muted); font-weight: 500; }
+    .fc-sub { font-size: 0.9rem; color: var(--muted); max-width: 50ch; margin: 0 auto 36px; line-height: 1.7; }
+    .fc-btns { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; margin-bottom: 56px; }
+    .fc-stack { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; margin-bottom: 56px; }
+    .fc-stack-tag { font-size: 0.7rem; color: var(--dim); border: 1px solid var(--border); padding: 5px 12px; border-radius: 6px; }
+    .footer-bottom { border-top: 1px solid var(--border); padding: 22px 40px; display: flex; flex-direction: column; justify-content: center; align-items: center; gap: 8px; text-align: center; width: 100%; }
+    .fb-left, .fb-right { font-size: 0.78rem; color: var(--muted); text-align: center; width: 100%; }
+    .fb-left a, .fb-right a { color: var(--muted); text-decoration: none; transition: color .2s; }
+    .fb-left a:hover, .fb-right a:hover { color: var(--text); }
+    @media (max-width: 900px) {
+      .feat-grid { grid-template-columns: 1fr 1fr; }
+      .stats-section { grid-template-columns: 1fr 1fr; }
+      .stat-card { border-bottom: 1px solid var(--border); }
+      .reliability-section { grid-template-columns: 1fr; gap: 40px; }
+      .api-grid { grid-template-columns: 1fr; }
+      nav { padding: 0 20px; }
+      .pipeline-wrap, .features-section, .reliability-section, .api-section { padding: 60px 20px; }
     }
-
-    .step p {
-      color: #cbe8ee;
-      line-height: 1.5;
-      font-size: 0.95rem;
-    }
-
-    .step code {
-      font-family: "Courier New", monospace;
-      background: rgba(0, 0, 0, 0.3);
-      border: 1px solid rgba(255, 255, 255, 0.14);
-      border-radius: 8px;
-      padding: 2px 6px;
-      color: #ddf8ff;
-    }
-
-    footer {
-      margin-top: 38px;
-      border-top: 1px solid var(--line);
-      padding-top: 20px;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      flex-wrap: wrap;
-      gap: 10px;
-      color: #83b0bc;
-      font-size: 0.9rem;
-    }
-
-    footer a {
-      color: var(--cyan);
-      text-decoration: none;
-    }
-
-    @keyframes spin {
-      to { transform: rotate(360deg); }
-    }
-
-    @keyframes breathe {
-      0%, 100% { transform: scale(0.95); }
-      50% { transform: scale(1.03); }
-    }
-
-    @keyframes sonar {
-      from { transform: scale(0.6); opacity: 0.9; }
-      to { transform: scale(2.1); opacity: 0; }
-    }
-
-    @keyframes pulse {
-      0%, 100% { transform: scale(1); opacity: 0.8; }
-      50% { transform: scale(1.18); opacity: 0.45; }
-    }
-
-    @keyframes glitch {
-      0%, 91%, 100% { clip-path: inset(0 0 0 0); }
-      92% { clip-path: inset(28% 0 58% 0); }
-      94% { clip-path: inset(62% 0 10% 0); }
-      96% { clip-path: inset(6% 0 70% 0); }
-      98% { clip-path: inset(52% 0 22% 0); }
-    }
-
-    @keyframes blink {
-      0%, 100% { opacity: 1; }
-      50% { opacity: 0.2; }
-    }
-
-    @keyframes scrollX {
-      from { transform: translateX(0); }
-      to { transform: translateX(-50%); }
-    }
-
-    @keyframes roll {
-      from { transform: translateY(0); }
-      to { transform: translateY(60px); }
-    }
-
-    @media (max-width: 980px) {
-      .hero {
-        grid-template-columns: 1fr;
-      }
-
-      .cards .card {
-        grid-column: span 6;
-      }
-
-      .stats {
-        grid-template-columns: repeat(2, minmax(0, 1fr));
-      }
-    }
-
-    @media (max-width: 700px) {
-      main {
-        width: min(94vw, 720px);
-      }
-
-      .hero-copy,
-      .signal-box {
-        padding: 20px;
-      }
-
-      .cards .card {
-        grid-column: span 12;
-      }
-
-      .ticker-track {
-        gap: 22px;
-        font-size: 0.8rem;
-      }
-    }
-
-    @media (prefers-reduced-motion: reduce) {
-      *, *::before, *::after {
-        animation-duration: 1ms !important;
-        animation-iteration-count: 1 !important;
-        transition-duration: 1ms !important;
-      }
+    @media (max-width: 600px) {
+      .feat-grid { grid-template-columns: 1fr; }
+      .stats-section { grid-template-columns: 1fr 1fr; }
+      .nav-status { display: none; }
     }
   </style>
 </head>
 <body>
-  <div class="sky-noise"></div>
-  <div class="grid"></div>
 
-  <main>
-    <header class="topbar">
-      <div class="brand">HERMES SIGNAL STORM</div>
-      <div class="top-links">
-        <a href="/dashboard" class="chip">Dashboard</a>
-        <a href="/health" class="chip">Health</a>
-        <a href="https://github.com/atulkr20/Hermes" class="chip" target="_blank" rel="noreferrer">GitHub</a>
+<nav>
+  <a href="/" class="nav-logo">
+    <div class="nav-logo-mark">H</div>
+    Hermes
+  </a>
+  <div class="nav-status">
+    <div class="pulse-dot"></div>
+    All systems operational
+  </div>
+  <div class="nav-links">
+    <a href="/health" class="nav-a">Health</a>
+    <a href="https://github.com/atulkr20/Hermes" class="nav-a" target="_blank" rel="noreferrer">GitHub</a>
+    <a href="/dashboard" class="nav-a cta">Dashboard →</a>
+  </div>
+</nav>
+
+<!-- HERO -->
+<section class="hero">
+  <canvas id="constellation"></canvas>
+  <div class="hero-scrim"></div>
+  <div class="hero-content">
+    <div class="hero-badge"><div class="hero-badge-dot"></div>Open Source · Production Grade</div>
+    <h1 class="hero-h1">
+      Your events<br>
+      <span class="grad">always arrive.</span>
+    </h1>
+    <p class="hero-sub">
+      Hermes is webhook delivery infrastructure built like <strong>Stripe</strong> and <strong>Razorpay</strong> do it internally. HMAC-signed payloads, BullMQ queue engine, exponential backoff, and a dead letter queue — so nothing disappears quietly.
+    </p>
+    <div class="hero-btns">
+      <a href="/dashboard" class="btn btn-gold">Open Dashboard →</a>
+      <a href="https://github.com/atulkr20/Hermes" class="btn btn-ghost" target="_blank" rel="noreferrer">View Source</a>
+    </div>
+  </div>
+  <div class="hero-scroll">
+    <div class="scroll-line"></div>
+    scroll
+  </div>
+</section>
+
+<!-- PIPELINE -->
+<div class="pipeline-wrap">
+  <div class="section-eyebrow">Live Pipeline</div>
+  <div style="display:flex;justify-content:space-between;align-items:flex-end;flex-wrap:wrap;gap:16px;margin-bottom:24px;">
+    <div>
+      <div class="section-title">Watch your webhook travel, step by step.</div>
+      <p class="section-sub" style="margin-bottom:0;">When you send a webhook, here's exactly what happens under the hood — live. Each bubble is a real event moving through the system.</p>
+    </div>
+    <div class="pipeline-live"><div class="pulse-dot"></div> Streaming now</div>
+  </div>
+  <div class="pipeline-canvas-wrap">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">
+      <span style="font-size:0.7rem;color:var(--muted);font-weight:500;">Following: <strong id="peb-event-name" style="color:var(--text);">payment received</strong></span>
+      <div class="pipeline-live"><div class="pulse-dot"></div> live</div>
+    </div>
+    <div class="pipe-row">
+      <div class="pipe-step" data-i="0">
+        <div class="pipe-step-ring"></div>
+        <div class="pipe-circle"><span class="pipe-num">1</span><span class="pipe-check">✓</span></div>
+        <div class="pipe-lbl">Received</div>
+        <div class="pipe-desc">Your app fires the event</div>
       </div>
-    </header>
-
-    <section class="hero">
-      <article class="panel hero-copy">
-        <div class="badge"><span class="dot"></span>Open Source Webhook Infrastructure</div>
-        <h1 data-text="Hermes">Hermes</h1>
-        <p class="lead">
-          Your events hit a kinetic relay: authenticated, signed, retried with exponential backoff, and preserved in a dead-letter black box when the world catches fire.
-        </p>
-        <div class="cta">
-          <a href="/dashboard" class="btn btn-primary">Launch Control Room</a>
-          <a href="https://github.com/atulkr20/Hermes" class="btn btn-secondary" target="_blank" rel="noreferrer">Read Source</a>
-        </div>
-      </article>
-
-      <aside class="panel signal-box" aria-label="Animated delivery signal">
-        <div class="ring r1"></div>
-        <div class="ring r2"></div>
-        <div class="ring r3"></div>
-        <div class="pulse"></div>
-        <div class="pulse p2"></div>
-        <div class="pulse p3"></div>
-        <div class="core">LIVE</div>
-      </aside>
-    </section>
-
-    <section class="ticker" aria-label="Event stream ticker">
-      <div class="ticker-track">
-        <span>Event Ingested</span>
-        <span>HMAC Signed</span>
-        <span>Queue Locked</span>
-        <span>Delivery Attempt #1</span>
-        <span>Response 200</span>
-        <span>Audit Logged</span>
-        <span>Dead Letter Recovery Ready</span>
-        <span>Event Ingested</span>
-        <span>HMAC Signed</span>
-        <span>Queue Locked</span>
-        <span>Delivery Attempt #1</span>
-        <span>Response 200</span>
-        <span>Audit Logged</span>
-        <span>Dead Letter Recovery Ready</span>
+      <div class="pipe-connector" id="pc-0"><div class="pipe-connector-fill"></div></div>
+      <div class="pipe-step" data-i="1">
+        <div class="pipe-step-ring"></div>
+        <div class="pipe-circle"><span class="pipe-num">2</span><span class="pipe-check">✓</span></div>
+        <div class="pipe-lbl">Secured</div>
+        <div class="pipe-desc">Signed with a secret key</div>
       </div>
-    </section>
-
-    <section class="cards">
-      <article class="card reveal" style="transition-delay: 70ms;">
-        <h3>Cryptographic Armor</h3>
-        <p>Every payload ships with HMAC-SHA256 signatures so receivers can verify authenticity before touching business logic.</p>
-      </article>
-      <article class="card reveal" style="transition-delay: 140ms;">
-        <h3>Adaptive Retry Matrix</h3>
-        <p>Retries fan out over 1m, 5m, 30m, and 2h to absorb transient outages without flooding downstream systems.</p>
-      </article>
-      <article class="card reveal" style="transition-delay: 210ms;">
-        <h3>Failure Is Preserved</h3>
-        <p>After the fifth strike, events are sealed into DLQ with traceable reason codes and one-click requeue control.</p>
-      </article>
-    </section>
-
-    <section class="stats">
-      <div class="stat"><strong>5</strong><span>Max Attempts</span></div>
-      <div class="stat"><strong>1-120m</strong><span>Backoff Range</span></div>
-      <div class="stat"><strong>HMAC</strong><span>Signature Mode</span></div>
-      <div class="stat"><strong>100%</strong><span>Attempt Logging</span></div>
-    </section>
-
-    <section class="steps">
-      <div class="step">
-        <p>Register a merchant endpoint like <code>https://hermes.itsatul.tech/test-receiver</code> and capture the generated merchant id.</p>
+      <div class="pipe-connector" id="pc-1"><div class="pipe-connector-fill"></div></div>
+      <div class="pipe-step" data-i="2">
+        <div class="pipe-step-ring"></div>
+        <div class="pipe-circle"><span class="pipe-num">3</span><span class="pipe-check">✓</span></div>
+        <div class="pipe-lbl">Queued</div>
+        <div class="pipe-desc">Safely waiting its turn</div>
       </div>
-      <div class="step">
-        <p>Publish an event using your chosen <code>eventType</code>, for example <code>payment.success</code>, through the API.</p>
+      <div class="pipe-connector" id="pc-2"><div class="pipe-connector-fill"></div></div>
+      <div class="pipe-step" data-i="3">
+        <div class="pipe-step-ring"></div>
+        <div class="pipe-circle"><span class="pipe-num">4</span><span class="pipe-check">✓</span></div>
+        <div class="pipe-lbl">Sent</div>
+        <div class="pipe-desc">Fired to your endpoint</div>
       </div>
-      <div class="step">
-        <p>Watch real-time delivery, retries, and final state transitions inside the dashboard control room.</p>
+      <div class="pipe-connector" id="pc-3"><div class="pipe-connector-fill"></div></div>
+      <div class="pipe-step" data-i="4">
+        <div class="pipe-step-ring"></div>
+        <div class="pipe-circle"><span class="pipe-num">5</span><span class="pipe-check">✓</span></div>
+        <div class="pipe-lbl">Confirmed</div>
+        <div class="pipe-desc">Your server said OK</div>
       </div>
-    </section>
+      <div class="pipe-connector" id="pc-4"><div class="pipe-connector-fill"></div></div>
+      <div class="pipe-step" data-i="5">
+        <div class="pipe-step-ring"></div>
+        <div class="pipe-circle"><span class="pipe-num">6</span><span class="pipe-check">✓</span></div>
+        <div class="pipe-lbl">Saved</div>
+        <div class="pipe-desc">Result recorded forever</div>
+      </div>
+    </div>
+    <div class="pipe-event-bar">
+      <div class="peb-dot"></div>
+      <div class="peb-text" id="peb-text">Waiting for next event...</div>
+      <div class="peb-step" id="peb-step">Step 1 of 6</div>
+    </div>
+  </div>
+  <div class="log-wrap">
+    <div class="log-bar">
+      <span class="log-bar-title">What's happening right now</span>
+      <div class="pipeline-live" style="font-size:0.66rem"><div class="pulse-dot"></div> live</div>
+    </div>
+    <div class="log-entries">
+      <ul id="log-ul"></ul>
+    </div>
+  </div>
+</div>
 
-    <footer>
-      <span>Built by <a href="https://linkedin.com/in/atulkr20" target="_blank" rel="noreferrer">Atul Kumar</a></span>
-      <span>Node.js · TypeScript · Redis · BullMQ · Prisma · PostgreSQL</span>
-    </footer>
-  </main>
+<!-- FEATURES -->
+<section class="features-section">
+  <div style="margin-bottom:48px;">
+    <div class="section-eyebrow">Core Capabilities</div>
+    <div class="section-title">Everything a webhook needs to survive.</div>
+  </div>
+  <div class="feat-grid">
+    <div class="feat-card">
+      <div class="feat-icon">🔐</div>
+      <div class="feat-title">HMAC-SHA256 Signatures</div>
+      <p class="feat-body">Every payload dispatches with <code>X-Webhook-Signature</code>. Receivers verify before business logic runs. Timing-safe comparison prevents brute-force.</p>
+    </div>
+    <div class="feat-card">
+      <div class="feat-icon">⚡</div>
+      <div class="feat-title">Exponential Backoff Retries</div>
+      <p class="feat-body">5 attempts spread over immediate → 1m → 5m → 30m → 2h. Absorbs transient outages without hammering downstream systems.</p>
+    </div>
+    <div class="feat-card">
+      <div class="feat-icon">📬</div>
+      <div class="feat-title">Dead Letter Queue</div>
+      <p class="feat-body">After 5 failures, events are sealed with reason codes and timestamps. One API call requeues them when your endpoint recovers. Zero silent drops.</p>
+    </div>
+    <div class="feat-card">
+      <div class="feat-icon">📡</div>
+      <div class="feat-title">BullMQ + Redis Engine</div>
+      <p class="feat-body">Redis-backed BullMQ handles concurrency, persistence, and job visibility across worker restarts, deployments, and crashes.</p>
+    </div>
+    <div class="feat-card">
+      <div class="feat-icon">📜</div>
+      <div class="feat-title">Full Attempt Logging</div>
+      <p class="feat-body">Every delivery attempt is journaled to Postgres via Prisma — status code, latency, timestamp, error. Complete audit trail, always queryable.</p>
+    </div>
+    <div class="feat-card">
+      <div class="feat-icon">🏪</div>
+      <div class="feat-title">Per-Merchant Isolation</div>
+      <p class="feat-body">Each merchant gets a scoped HMAC secret. Toggle delivery independently. Events never bleed between tenants. Multi-merchant from day one.</p>
+    </div>
+  </div>
+</section>
 
-  <script>
-    const revealNodes = document.querySelectorAll('.reveal');
-    const observer = new IntersectionObserver((entries) => {
-      entries.forEach((entry) => {
-        if (entry.isIntersecting) {
-          entry.target.classList.add('visible');
-        }
-      });
-    }, { threshold: 0.18 });
+<!-- STATS -->
+<div class="stats-section">
+  <div class="stat-card">
+    <div class="stat-num">5<sup>×</sup></div>
+    <div class="stat-lbl">Max retry attempts</div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-num">120<sup>m</sup></div>
+    <div class="stat-lbl">Peak backoff delay</div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-num">100<sup>%</sup></div>
+    <div class="stat-lbl">Attempts logged</div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-num">0<sup> lost</sup></div>
+    <div class="stat-lbl">Events silently dropped</div>
+  </div>
+</div>
 
-    revealNodes.forEach((node) => observer.observe(node));
-  </script>
+<!-- RELIABILITY -->
+<section class="reliability-section">
+  <div>
+    <div class="section-eyebrow">Reliability</div>
+    <div class="section-title">Failure is expected.<br>Recovery is built in.</div>
+    <p class="section-sub">Hermes treats transient failures as normal. When your endpoint drops, events backoff gracefully. After 5 failures they seal into the Dead Letter Queue — preserved, traceable, and requeue-able with a single API call.</p>
+  </div>
+  <div class="retry-visual">
+    <div class="retry-head">Retry Schedule</div>
+    <div class="retry-item">
+      <div class="retry-badge">1</div>
+      <div class="retry-info">
+        <div class="retry-label">First Attempt</div>
+        <div class="retry-bar-bg"><div class="retry-bar-fg" style="width:3%"></div></div>
+      </div>
+      <div class="retry-time">Immediate</div>
+    </div>
+    <div class="retry-item">
+      <div class="retry-badge">2</div>
+      <div class="retry-info">
+        <div class="retry-label">Second Attempt</div>
+        <div class="retry-bar-bg"><div class="retry-bar-fg" style="width:14%"></div></div>
+      </div>
+      <div class="retry-time">+ 1 min</div>
+    </div>
+    <div class="retry-item">
+      <div class="retry-badge">3</div>
+      <div class="retry-info">
+        <div class="retry-label">Third Attempt</div>
+        <div class="retry-bar-bg"><div class="retry-bar-fg" style="width:36%"></div></div>
+      </div>
+      <div class="retry-time">+ 5 min</div>
+    </div>
+    <div class="retry-item">
+      <div class="retry-badge">4</div>
+      <div class="retry-info">
+        <div class="retry-label">Fourth Attempt</div>
+        <div class="retry-bar-bg"><div class="retry-bar-fg" style="width:64%"></div></div>
+      </div>
+      <div class="retry-time">+ 30 min</div>
+    </div>
+    <div class="retry-item">
+      <div class="retry-badge">5</div>
+      <div class="retry-info">
+        <div class="retry-label">Fifth Attempt</div>
+        <div class="retry-bar-bg"><div class="retry-bar-fg" style="width:92%"></div></div>
+      </div>
+      <div class="retry-time">+ 2 hrs</div>
+    </div>
+    <div class="retry-item" style="background:rgba(244,63,94,0.04)">
+      <div class="retry-badge dlq">✕</div>
+      <div class="retry-info">
+        <div class="retry-label" style="color:var(--red)">Dead Letter Queue</div>
+        <div style="font-size:0.72rem;color:var(--muted);margin-top:2px">Sealed with reason codes — requeue anytime</div>
+      </div>
+      <div class="retry-time" style="color:var(--red)">DLQ</div>
+    </div>
+  </div>
+</section>
+
+<!-- FOOTER -->
+<footer class="footer">
+  <!-- Conclusion / CTA -->
+  <div class="footer-conclusion">
+    <div class="fc-eyebrow">Built for reliability</div>
+    <h2 class="fc-headline">
+      Your webhooks deserve<br>
+      <span class="dim">better than hope.</span>
+    </h2>
+    <p class="fc-sub">
+      Hermes makes sure your events reach their destination — every time. Signed, queued, retried, and logged. So you don't have to think about it.
+    </p>
+    <div class="fc-btns">
+      <a href="/dashboard" class="btn btn-gold">Open Dashboard →</a>
+      <a href="https://github.com/atulkr20/Hermes" class="btn btn-ghost" target="_blank" rel="noreferrer">View on GitHub</a>
+    </div>
+    <div class="fc-stack">
+      <span class="fc-stack-tag">Node.js</span>
+      <span class="fc-stack-tag">TypeScript</span>
+      <span class="fc-stack-tag">Express 5</span>
+      <span class="fc-stack-tag">PostgreSQL</span>
+      <span class="fc-stack-tag">Prisma ORM</span>
+      <span class="fc-stack-tag">Redis</span>
+      <span class="fc-stack-tag">BullMQ</span>
+      <span class="fc-stack-tag">Zod</span>
+      <span class="fc-stack-tag">HMAC-SHA256</span>
+      <span class="fc-stack-tag">Docker</span>
+    </div>
+  </div>
+  <!-- Bottom bar -->
+  <div class="footer-bottom">
+    <p class="fb-left">Built by <a href="https://linkedin.com/in/atulkr20" target="_blank" rel="noreferrer">Atul Kumar</a> &nbsp;·&nbsp; Inspired by Stripe's internal webhook delivery architecture</p>
+    <p class="fb-right"><a href="https://github.com/atulkr20/Hermes" target="_blank" rel="noreferrer">github.com/atulkr20/Hermes ↗</a></p>
+  </div>
+</footer>
+
+<script>
+// ── CONSTELLATION HERO CANVAS ──
+const CSTAR = document.getElementById('constellation');
+const cctx = CSTAR.getContext('2d');
+function resizeStar() { CSTAR.width = window.innerWidth; CSTAR.height = window.innerHeight; }
+resizeStar(); window.addEventListener('resize', resizeStar);
+
+const GOLD = '#f59e0b', GOLDG = 'rgba(245,158,11,', GREEN = '#34d399';
+const W = () => CSTAR.width, H = () => CSTAR.height;
+
+// star nodes
+const nodes = Array.from({length:22}, () => ({
+  x: Math.random(), y: Math.random(),
+  vx: (Math.random()-.5)*0.00015, vy: (Math.random()-.5)*0.00015,
+  r: 2 + Math.random()*3,
+  alpha: 0.2 + Math.random()*0.5
+}));
+// hub node
+const hub = { x:0.5, y:0.5, r:6, alpha:1 };
+
+// packets
+const cpackets = [];
+function spawnCP() {
+  const dest = nodes[Math.floor(Math.random()*nodes.length)];
+  const ok = Math.random() > 0.15;
+  cpackets.push({ prog:0, speed:0.004+Math.random()*0.003, dest, color: ok ? GREEN : '#f43f5e', trail:[] });
+}
+spawnCP(); setTimeout(spawnCP,800); setTimeout(spawnCP,1600);
+setInterval(spawnCP, 2800);
+
+let mouse = {x:0.5, y:0.5};
+document.addEventListener('mousemove', e => { mouse.x=e.clientX/window.innerWidth; mouse.y=e.clientY/window.innerHeight; });
+
+function animStar() {
+  const w=W(), h=H();
+  cctx.clearRect(0,0,w,h);
+
+  // update nodes
+  nodes.forEach(n => {
+    n.x += n.vx; n.y += n.vy;
+    if(n.x<0||n.x>1) n.vx*=-1;
+    if(n.y<0||n.y>1) n.vy*=-1;
+  });
+
+  // connections
+  nodes.forEach((a,i) => nodes.slice(i+1).forEach(b => {
+    const d = Math.hypot((a.x-b.x)*w,(a.y-b.y)*h);
+    if(d < 160) {
+      cctx.beginPath();
+      cctx.moveTo(a.x*w, a.y*h);
+      cctx.lineTo(b.x*w, b.y*h);
+      cctx.strokeStyle = `rgba(245,158,11,${0.04*(1-d/160)})`;
+      cctx.lineWidth=1; cctx.stroke();
+    }
+  }));
+  // hub connections
+  nodes.forEach(n => {
+    const d=Math.hypot((hub.x-n.x)*w,(hub.y-n.y)*h);
+    if(d<280){
+      cctx.beginPath();
+      cctx.moveTo(hub.x*w,hub.y*h);
+      cctx.lineTo(n.x*w,n.y*h);
+      cctx.strokeStyle=`rgba(245,158,11,${0.07*(1-d/280)})`;
+      cctx.lineWidth=1; cctx.stroke();
+    }
+  });
+
+  // packets
+  for(let pi=cpackets.length-1; pi>=0; pi--){
+    const p=cpackets[pi]; p.prog+=p.speed;
+    if(p.prog>1.1){cpackets.splice(pi,1);continue;}
+    const t=Math.min(p.prog,1);
+    const px=(hub.x+(p.dest.x-hub.x)*t)*w;
+    const py=(hub.y+(p.dest.y-hub.y)*t)*h;
+    p.trail.push({x:px,y:py});
+    if(p.trail.length>20) p.trail.shift();
+    if(p.trail.length>1){
+      for(let j=1;j<p.trail.length;j++){
+        cctx.beginPath();
+        cctx.moveTo(p.trail[j-1].x,p.trail[j-1].y);
+        cctx.lineTo(p.trail[j].x,p.trail[j].y);
+        const al=(j/p.trail.length)*0.6;
+        cctx.strokeStyle=p.color+Math.round(al*255).toString(16).padStart(2,'0');
+        cctx.lineWidth=2; cctx.stroke();
+      }
+    }
+    cctx.beginPath(); cctx.arc(px,py,3,0,Math.PI*2);
+    cctx.fillStyle=p.color; cctx.fill();
+  }
+
+  // normal nodes
+  nodes.forEach(n => {
+    cctx.beginPath(); cctx.arc(n.x*w,n.y*h,n.r,0,Math.PI*2);
+    cctx.fillStyle=`rgba(245,158,11,${n.alpha*0.5})`; cctx.fill();
+  });
+
+  // hub
+  const hx=hub.x*w, hy=hub.y*h;
+  const grd=cctx.createRadialGradient(hx,hy,0,hx,hy,60);
+  grd.addColorStop(0,'rgba(245,158,11,0.25)'); grd.addColorStop(1,'rgba(245,158,11,0)');
+  cctx.beginPath(); cctx.arc(hx,hy,60,0,Math.PI*2);
+  cctx.fillStyle=grd; cctx.fill();
+  cctx.beginPath(); cctx.arc(hx,hy,hub.r,0,Math.PI*2);
+  cctx.fillStyle=GOLD; cctx.fill();
+
+  requestAnimationFrame(animStar);
+}
+animStar();
+
+// ── CSS STEP PIPELINE ──
+const PIPE_EVENTS = ['payment received','order shipped','refund started','user signed up'];
+const PIPE_MSGS = [
+  'just arrived — Hermes picked it up',
+  'being signed with your secret key so your app can trust it',
+  'safely waiting in the queue — nothing gets lost here',
+  'being fired to your app right now',
+  'your app said OK — it arrived successfully',
+  'all done — the result is saved and the job is complete ✓',
+];
+const pipeSteps = document.querySelectorAll('.pipe-step');
+const pipeConns = document.querySelectorAll('.pipe-connector');
+let ps = 0, pe = 0;
+
+function setPipeStage(stage) {
+  pipeSteps.forEach((s, i) => {
+    s.classList.remove('active','done');
+    if (i < stage) s.classList.add('done');
+    else if (i === stage) s.classList.add('active');
+  });
+  pipeConns.forEach((c, i) => c.classList.toggle('filled', i < stage));
+  document.getElementById('peb-text').innerHTML =
+    `<strong>"${PIPE_EVENTS[pe]}"</strong> — ${PIPE_MSGS[stage]}`;
+  document.getElementById('peb-step').textContent = `Step ${stage+1} of 6`;
+  document.getElementById('peb-event-name').textContent = PIPE_EVENTS[pe];
+}
+
+function runPipe() {
+  setPipeStage(ps);
+  ps++;
+  if (ps >= 6) {
+    setTimeout(() => {
+      // all done — brief green moment then reset
+      pipeSteps.forEach(s => { s.classList.remove('active'); s.classList.add('done'); });
+      pipeConns.forEach(c => c.classList.add('filled'));
+      setTimeout(() => {
+        ps = 0;
+        pe = (pe + 1) % PIPE_EVENTS.length;
+        pipeSteps.forEach(s => s.classList.remove('active','done'));
+        pipeConns.forEach(c => c.classList.remove('filled'));
+        setTimeout(runPipe, 300);
+      }, 1200);
+    }, 300);
+  } else {
+    setTimeout(runPipe, 1500);
+  }
+}
+runPipe();
+
+// ── LIVE LOG ──
+const logs=[
+  ['ok','<em>payment received</em> — your app got it in 78ms ✓'],
+  ['info','<em>order shipped</em> event picked up and queued'],
+  ['ok','Security check passed — signature looks good ✓'],
+  ['warn','<em>user signed up</em> — your server returned an error, will retry in 1 min'],
+  ['ok','<em>refund started</em> — delivered successfully ✓'],
+  ['err','Retry #5 failed for <em>payment event</em> — saving to Dead Letter Queue'],
+  ['ok','Rescued a stuck event — redelivered successfully ✓'],
+  ['info','<em>order shipped</em> event is waiting in line to be sent'],
+  ['ok','<em>user signed up</em> — your app confirmed it in 112ms ✓'],
+  ['warn','Your server took too long — will try again in 5 minutes'],
+];
+let li=0; const ul=document.getElementById('log-ul');
+function addLog(){
+  const [lv,msg]=logs[li%logs.length]; li++;
+  const now=new Date();
+  const ts=`${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}:${String(now.getSeconds()).padStart(2,'0')}.${String(now.getMilliseconds()).padStart(3,'0')}`;
+  const el=document.createElement('li');
+  el.className='log-row';
+  el.innerHTML=`<span class="l-ts">${ts}</span><span class="l-lv ${lv}">${lv.toUpperCase()}</span><span class="l-msg">${msg}</span>`;
+  ul.insertBefore(el,ul.firstChild);
+  if(ul.children.length>10) ul.removeChild(ul.lastChild);
+}
+addLog();addLog();addLog();addLog();
+setInterval(addLog,2400);
+</script>
 </body>
 </html>
