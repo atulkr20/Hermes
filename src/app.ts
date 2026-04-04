@@ -54,9 +54,20 @@ app.get('/health', (_req: Request, res: Response) => {
         timestamp: new Date().toISOString(),
     });
 });
-app.use('/dashboard', express.static(process.cwd() + '/src/public'));
 app.get('/', (_req: Request, res: Response) => {
-  res.sendFile(process.cwd() + '/src/public/landing.html');
+    res.status(200).json({
+        service: "Hermes",
+        description: "Webhook delivery system with retry logic and failure handling",
+        version: "1.0.0",
+        status: "ok",
+        features: [
+            "Exponential backoff retries",
+            "HMAC-SHA256 payload signing",
+            "Dead letter queue for failed deliveries"
+        ],
+        github: "github.com/atulkr20/hermes",
+        test_receiver: "hermes.itsatul.tech/test-receiver"
+    });
 });
 
 //API Routes
