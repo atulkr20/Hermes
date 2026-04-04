@@ -28,6 +28,8 @@ app.get('/test-receiver', (_req: Request, res: Response) => {
         usage: 'Register this URL as your merchant endpointUrl to test webhook delivery',
         endpoint: 'https://hermes.itsatul.tech/test-receiver',
     });
+app.use('/dashboard', express.static(process.cwd() + '/src/public'));
+
 });
 
 // for actual webhook delivery

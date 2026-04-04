@@ -1,0 +1,812 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Hermes — Webhook Delivery</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      font-size: 14px;
+      background: #0f0f0f;
+      color: #e0e0e0;
+      min-height: 100vh;
+      overflow: auto;
+    }
+
+    .app {
+      display: flex;
+      min-height: 100vh;
+    }
+
+    /* ── Sidebar ── */
+    .sidebar {
+      width: 200px;
+      min-width: 200px;
+      background: #161616;
+      border-right: 1px solid #2a2a2a;
+      display: flex;
+      flex-direction: column;
+      padding: 0;
+    }
+
+    .logo {
+      padding: 20px 16px 16px;
+      font-size: 16px;
+      font-weight: 600;
+      color: #fff;
+      border-bottom: 1px solid #2a2a2a;
+      letter-spacing: -0.3px;
+    }
+
+    .logo span {
+      font-size: 11px;
+      color: #666;
+      font-weight: 400;
+      display: block;
+      margin-top: 3px;
+      letter-spacing: 0;
+    }
+
+    .mobile-top {
+      display: block;
+    }
+
+    .menu-toggle {
+      display: none;
+      border: 1px solid #2a2a2a;
+      background: #121212;
+      color: #ddd;
+      padding: 6px 10px;
+      border-radius: 8px;
+      font-size: 16px;
+      line-height: 1;
+      min-width: 40px;
+      text-align: center;
+    }
+
+    .nav { padding: 10px 0; }
+
+    .nav-btn {
+      display: flex;
+      align-items: center;
+      gap: 9px;
+      padding: 9px 16px;
+      width: 100%;
+      border: none;
+      background: none;
+      color: #888;
+      font-size: 13px;
+      cursor: pointer;
+      text-align: left;
+      transition: all 0.1s;
+      border-left: 2px solid transparent;
+    }
+
+    .nav-btn:hover { color: #ccc; background: #1d1d1d; }
+
+    .nav-btn.active {
+      color: #fff;
+      background: #1d1d1d;
+      border-left-color: #fff;
+    }
+
+    .nav-dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
+
+    /* ── Main ── */
+    .main {
+      flex: 1;
+      overflow-y: auto;
+      padding: 24px;
+      background: #0f0f0f;
+    }
+
+    .section { display: none; }
+    .section.active { display: block; }
+
+    h2 {
+      font-size: 15px;
+      font-weight: 600;
+      margin-bottom: 16px;
+      color: #fff;
+      letter-spacing: -0.2px;
+    }
+
+    .card {
+      background: #161616;
+      border: 1px solid #2a2a2a;
+      border-radius: 10px;
+      padding: 16px;
+      margin-bottom: 12px;
+    }
+
+    .card-label {
+      font-size: 10px;
+      font-weight: 600;
+      letter-spacing: 0.8px;
+      color: #555;
+      margin-bottom: 12px;
+      text-transform: uppercase;
+    }
+
+    .row { display: flex; gap: 10px; margin-bottom: 10px; flex-wrap: wrap; }
+
+    .field { flex: 1; min-width: 160px; }
+    .field label { font-size: 11px; color: #666; display: block; margin-bottom: 5px; }
+
+    input, select, textarea {
+      width: 100%;
+      padding: 8px 10px;
+      background: #0f0f0f;
+      border: 1px solid #2a2a2a;
+      border-radius: 6px;
+      color: #e0e0e0;
+      font-size: 13px;
+      font-family: inherit;
+      outline: none;
+      transition: border-color 0.15s;
+    }
+
+    input:focus, select:focus, textarea:focus { border-color: #444; }
+    textarea { resize: vertical; min-height: 80px; }
+
+    button {
+      padding: 8px 14px;
+      border: 1px solid #333;
+      border-radius: 6px;
+      background: #1d1d1d;
+      color: #ccc;
+      font-size: 13px;
+      cursor: pointer;
+      font-family: inherit;
+      transition: all 0.1s;
+      white-space: nowrap;
+    }
+
+    button:hover { background: #252525; color: #fff; border-color: #444; }
+
+    button.primary {
+      background: #fff;
+      color: #0f0f0f;
+      border-color: #fff;
+      font-weight: 500;
+    }
+
+    button.primary:hover { background: #e8e8e8; }
+
+    button.success { border-color: #2a5c2a; color: #4caf50; background: #0d1f0d; }
+    button.success:hover { background: #132813; }
+
+    .res-box {
+      background: #0a0a0a;
+      border: 1px solid #2a2a2a;
+      border-radius: 6px;
+      padding: 12px;
+      font-family: 'SF Mono', 'Fira Code', monospace;
+      font-size: 11px;
+      color: #888;
+      margin-top: 10px;
+      max-height: 160px;
+      overflow-y: auto;
+      white-space: pre-wrap;
+      word-break: break-all;
+      line-height: 1.6;
+    }
+
+    .res-box.ok { border-color: #2a5c2a; color: #4caf50; }
+    .res-box.err { border-color: #5c2a2a; color: #f44336; }
+
+    .badge {
+      display: inline-block;
+      padding: 2px 8px;
+      border-radius: 20px;
+      font-size: 10px;
+      font-weight: 600;
+      letter-spacing: 0.3px;
+    }
+
+    .badge-pending { background: #2a2208; color: #f59e0b; }
+    .badge-delivered { background: #0d1f0d; color: #4caf50; }
+    .badge-failed { background: #1f0d0d; color: #f44336; }
+    .badge-dead { background: #1a1a1a; color: #666; }
+
+    .table { width: 100%; border-collapse: collapse; font-size: 12px; }
+    .table th {
+      text-align: left;
+      padding: 8px 10px;
+      color: #555;
+      font-weight: 500;
+      border-bottom: 1px solid #2a2a2a;
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .table td {
+      padding: 9px 10px;
+      border-bottom: 1px solid #1d1d1d;
+      vertical-align: middle;
+    }
+
+    .table tr:last-child td { border-bottom: none; }
+    .table tr:hover td { background: #1a1a1a; }
+
+    .tag {
+      font-family: 'SF Mono', monospace;
+      font-size: 11px;
+      color: #666;
+      background: #1a1a1a;
+      padding: 1px 6px;
+      border-radius: 4px;
+    }
+
+    .attempt-row {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+      padding: 8px 0;
+      border-bottom: 1px solid #1d1d1d;
+      font-size: 12px;
+    }
+
+    .attempt-row:last-child { border-bottom: none; }
+
+    .empty {
+      text-align: center;
+      padding: 32px;
+      color: #444;
+      font-size: 13px;
+      font-style: italic;
+    }
+
+    .attempt-label {
+      font-weight: 600;
+      min-width: 75px;
+      color: #ccc;
+    }
+
+    .attempt-response {
+      color: #555;
+      flex: 1;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      font-size: 11px;
+    }
+
+    .attempt-time {
+      color: #444;
+      font-size: 11px;
+      white-space: nowrap;
+    }
+
+    .table-wrap {
+      width: 100%;
+      overflow-x: auto;
+    }
+
+    .table-wrap .table {
+      min-width: 640px;
+    }
+
+    @media (max-width: 900px) {
+      .sidebar {
+        width: 170px;
+        min-width: 170px;
+      }
+
+      .main {
+        padding: 16px;
+      }
+
+      .field {
+        min-width: 140px;
+      }
+    }
+
+    @media (max-width: 720px) {
+      body {
+        overflow: auto;
+      }
+
+      .app {
+        flex-direction: column;
+        min-height: 100dvh;
+      }
+
+      .sidebar {
+        width: 100%;
+        min-width: 100%;
+        border-right: none;
+        border-bottom: 1px solid #2a2a2a;
+      }
+
+      .mobile-top {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+      }
+
+      .logo {
+        padding: 14px 14px 12px;
+        border-bottom: none;
+      }
+
+      .menu-toggle {
+        display: inline-block;
+        margin-right: 12px;
+      }
+
+      .nav {
+        display: none;
+        padding: 8px;
+        flex-direction: column;
+        gap: 8px;
+        border-top: 1px solid #2a2a2a;
+      }
+
+      .sidebar.open .nav {
+        display: flex;
+      }
+
+      .nav-btn {
+        width: 100%;
+        flex: 1;
+        border-left: 1px solid #2a2a2a;
+        border-radius: 8px;
+        padding: 8px 12px;
+        background: #121212;
+      }
+
+      .nav-btn.active {
+        border-left-color: #fff;
+      }
+
+      .main {
+        padding: 12px;
+      }
+
+      .card {
+        padding: 12px;
+      }
+
+      .row {
+        flex-direction: column;
+        gap: 8px;
+      }
+
+      .field {
+        min-width: 100%;
+      }
+
+      .row button,
+      .row .success,
+      .row .primary {
+        width: 100%;
+        margin-top: 0 !important;
+      }
+
+      button,
+      select,
+      input,
+      textarea {
+        font-size: 14px;
+      }
+
+      .attempt-row {
+        align-items: flex-start;
+        flex-wrap: wrap;
+      }
+
+      .attempt-label {
+        min-width: auto;
+      }
+
+      .attempt-response {
+        flex: 1 1 100%;
+        white-space: normal;
+        overflow-wrap: anywhere;
+      }
+    }
+  </style>
+</head>
+<body>
+
+<div class="app">
+  <div class="sidebar" id="sidebar">
+    <div class="mobile-top">
+      <div class="logo">Hermes <span>Webhook Delivery</span></div>
+      <button
+        id="menu-toggle"
+        class="menu-toggle"
+        type="button"
+        aria-label="Toggle navigation menu"
+        aria-expanded="false"
+        onclick="toggleSidebar()"
+      >☰</button>
+    </div>
+    <nav class="nav">
+      <button class="nav-btn active" onclick="showSection('merchants', this)">
+        <span class="nav-dot" style="background:#3b82f6"></span> Merchants
+      </button>
+      <button class="nav-btn" onclick="showSection('events', this)">
+        <span class="nav-dot" style="background:#22c55e"></span> Events
+      </button>
+      <button class="nav-btn" onclick="showSection('attempts', this)">
+        <span class="nav-dot" style="background:#f59e0b"></span> Delivery Attempts
+      </button>
+      <button class="nav-btn" onclick="showSection('dlq', this)">
+        <span class="nav-dot" style="background:#ef4444"></span> Dead Letter Queue
+      </button>
+    </nav>
+  </div>
+
+  <div class="main">
+
+    <!-- MERCHANTS -->
+    <div id="sec-merchants" class="section active">
+      <h2>Merchants</h2>
+
+      <div class="card">
+        <div class="card-label">Register new merchant</div>
+        <div class="row">
+          <div class="field">
+            <label>Name</label>
+            <input id="m-name" placeholder="Acme Payments" />
+          </div>
+          <div class="field">
+            <label>Endpoint URL</label>
+            <input id="m-url" placeholder="https://hermes.itsatul.tech/test-receiver" />
+          </div>
+        </div>
+        <button class="primary" onclick="registerMerchant()">Register merchant</button>
+        <div id="m-res" style="display:none" class="res-box"></div>
+      </div>
+
+      <div class="card">
+        <div class="card-label">Lookup merchant</div>
+        <div class="row">
+          <div class="field">
+            <label>Merchant ID</label>
+            <input id="m-lookup-id" placeholder="paste UUID here" />
+          </div>
+          <button style="margin-top:18px" onclick="getMerchant()">Fetch</button>
+        </div>
+        <div id="m-lookup-res" style="display:none" class="res-box"></div>
+      </div>
+
+      <div class="card">
+        <div class="card-label">Toggle merchant status</div>
+        <div class="row">
+          <div class="field">
+            <label>Merchant ID</label>
+            <input id="m-toggle-id" placeholder="paste UUID here" />
+          </div>
+          <div class="field">
+            <label>Set status</label>
+            <select id="m-toggle-status">
+              <option value="true">Active</option>
+              <option value="false">Inactive</option>
+            </select>
+          </div>
+          <button style="margin-top:18px" onclick="toggleMerchant()">Update</button>
+        </div>
+        <div id="m-toggle-res" style="display:none" class="res-box"></div>
+      </div>
+    </div>
+
+    <!-- EVENTS -->
+    <div id="sec-events" class="section">
+      <h2>Events</h2>
+
+      <div class="card">
+        <div class="card-label">Publish event</div>
+        <div class="row">
+          <div class="field">
+            <label>Merchant ID</label>
+            <input id="e-mid" placeholder="paste UUID here" />
+          </div>
+          <div class="field">
+            <label>Event type</label>
+            <input id="e-type" placeholder="payment.success" />
+          </div>
+        </div>
+        <div style="margin-bottom:12px">
+          <label style="font-size:11px;color:#666;display:block;margin-bottom:5px">Payload (JSON)</label>
+          <textarea id="e-payload">{"amount": 5000, "currency": "INR", "orderId": "ord_123"}</textarea>
+        </div>
+        <button class="primary" onclick="publishEvent()">Publish event</button>
+        <div id="e-res" style="display:none" class="res-box"></div>
+      </div>
+
+      <div class="card">
+        <div class="card-label">Lookup event</div>
+        <div class="row">
+          <div class="field">
+            <label>Event ID</label>
+            <input id="e-lookup-id" placeholder="paste UUID here" />
+          </div>
+          <button style="margin-top:18px" onclick="getEvent()">Fetch</button>
+        </div>
+        <div id="e-lookup-res" style="display:none" class="res-box"></div>
+      </div>
+
+      <div class="card">
+        <div class="card-label">Events by merchant</div>
+        <div class="row">
+          <div class="field">
+            <label>Merchant ID</label>
+            <input id="e-list-mid" placeholder="paste UUID here" />
+          </div>
+          <div class="field">
+            <label>Status filter</label>
+            <select id="e-list-status">
+              <option value="">All</option>
+              <option>PENDING</option>
+              <option>DELIVERED</option>
+              <option>FAILED</option>
+              <option>DEAD</option>
+            </select>
+          </div>
+          <button style="margin-top:18px" onclick="listEvents()">Fetch</button>
+        </div>
+        <div id="e-list-res" style="display:none"></div>
+      </div>
+    </div>
+
+    <!-- DELIVERY ATTEMPTS -->
+    <div id="sec-attempts" class="section">
+      <h2>Delivery attempts</h2>
+
+      <div class="card">
+        <div class="card-label">View attempts for event</div>
+        <div class="row">
+          <div class="field">
+            <label>Event ID</label>
+            <input id="a-event-id" placeholder="paste UUID here" />
+          </div>
+          <button style="margin-top:18px" onclick="getAttempts()">Fetch attempts</button>
+        </div>
+        <div id="a-res" style="display:none"></div>
+      </div>
+    </div>
+
+    <!-- DLQ -->
+    <div id="sec-dlq" class="section">
+      <h2>Dead Letter Queue</h2>
+
+      <div style="display:flex;gap:10px;align-items:center;margin-bottom:16px">
+        <button onclick="loadDLQ()">Refresh DLQ</button>
+        <span id="dlq-count" style="font-size:12px;color:#555"></span>
+      </div>
+
+      <div id="dlq-res"></div>
+
+      <div class="card" style="margin-top:16px">
+        <div class="card-label">Requeue by event ID</div>
+        <div class="row">
+          <div class="field">
+            <label>Event ID</label>
+            <input id="dlq-requeue-id" placeholder="paste UUID here" />
+          </div>
+          <button class="success" style="margin-top:18px" onclick="requeueEvent()">Requeue</button>
+        </div>
+        <div id="dlq-requeue-res" style="display:none" class="res-box"></div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+  const BASE = '';
+  const sidebar = document.getElementById('sidebar');
+  const menuToggle = document.getElementById('menu-toggle');
+
+  function isMobile() {
+    return window.matchMedia('(max-width: 720px)').matches;
+  }
+
+  function setSidebarOpen(isOpen) {
+    sidebar.classList.toggle('open', isOpen);
+    menuToggle.setAttribute('aria-expanded', String(isOpen));
+    menuToggle.textContent = isOpen ? '✕' : '☰';
+  }
+
+  function toggleSidebar() {
+    setSidebarOpen(!sidebar.classList.contains('open'));
+  }
+
+  function closeSidebarOnMobile() {
+    if (isMobile()) setSidebarOpen(false);
+  }
+
+  window.addEventListener('resize', () => {
+    if (!isMobile()) {
+      setSidebarOpen(false);
+    }
+  });
+
+  function showSection(name, btn) {
+    document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+    document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+    document.getElementById('sec-' + name).classList.add('active');
+    btn.classList.add('active');
+    closeSidebarOnMobile();
+  }
+
+  function showRes(id, data, ok) {
+    const el = document.getElementById(id);
+    el.style.display = 'block';
+    el.className = 'res-box ' + (ok ? 'ok' : 'err');
+    el.textContent = typeof data === 'string' ? data : JSON.stringify(data, null, 2);
+  }
+
+  async function api(method, path, body) {
+    try {
+      const opts = { method, headers: { 'Content-Type': 'application/json' } };
+      if (body) opts.body = JSON.stringify(body);
+      const r = await fetch(BASE + path, opts);
+      const json = await r.json();
+      return { ok: r.ok, data: json };
+    } catch (e) {
+      return { ok: false, data: { error: e.message } };
+    }
+  }
+
+  async function registerMerchant() {
+    const name = document.getElementById('m-name').value.trim();
+    const endpointUrl = document.getElementById('m-url').value.trim();
+    if (!name || !endpointUrl) return showRes('m-res', 'Name and endpoint URL are required', false);
+    const r = await api('POST', '/api/merchants/register', { name, endpointUrl });
+    showRes('m-res', r.data, r.ok);
+  }
+
+  async function getMerchant() {
+    const id = document.getElementById('m-lookup-id').value.trim();
+    if (!id) return showRes('m-lookup-res', 'Merchant ID is required', false);
+    const r = await api('GET', '/api/merchants/' + id);
+    showRes('m-lookup-res', r.data, r.ok);
+  }
+
+  async function toggleMerchant() {
+    const id = document.getElementById('m-toggle-id').value.trim();
+    const isActive = document.getElementById('m-toggle-status').value === 'true';
+    if (!id) return showRes('m-toggle-res', 'Merchant ID is required', false);
+    const r = await api('PATCH', '/api/merchants/' + id + '/toggle', { isActive });
+    showRes('m-toggle-res', r.data, r.ok);
+  }
+
+  async function publishEvent() {
+    const merchantId = document.getElementById('e-mid').value.trim();
+    const eventType = document.getElementById('e-type').value.trim();
+    const raw = document.getElementById('e-payload').value.trim();
+    if (!merchantId || !eventType) return showRes('e-res', 'Merchant ID and event type are required', false);
+    let payload;
+    try { payload = JSON.parse(raw); } catch { return showRes('e-res', 'Payload is not valid JSON', false); }
+    const r = await api('POST', '/api/events', { merchantId, eventType, payload });
+    showRes('e-res', r.data, r.ok);
+  }
+
+  async function getEvent() {
+    const id = document.getElementById('e-lookup-id').value.trim();
+    if (!id) return showRes('e-lookup-res', 'Event ID is required', false);
+    const r = await api('GET', '/api/events/' + id);
+    showRes('e-lookup-res', r.data, r.ok);
+  }
+
+  async function listEvents() {
+    const mid = document.getElementById('e-list-mid').value.trim();
+    const status = document.getElementById('e-list-status').value;
+    if (!mid) return;
+    let url = '/api/events?merchantId=' + mid;
+    if (status) url += '&status=' + status;
+    const r = await api('GET', url);
+    const el = document.getElementById('e-list-res');
+    el.style.display = 'block';
+    if (!r.ok || !r.data.data || r.data.data.length === 0) {
+      el.innerHTML = '<div class="empty">No events found</div>';
+      return;
+    }
+    const rows = r.data.data.map(e => `
+      <tr>
+        <td><span class="tag">${e.id.slice(0,8)}...</span></td>
+        <td>${e.eventType}</td>
+        <td><span class="badge badge-${e.status.toLowerCase()}">${e.status}</span></td>
+        <td style="color:#555;font-size:11px">${new Date(e.createdAt).toLocaleString()}</td>
+        <td style="color:#555">${(e.deliveryAttempts || []).length} attempt(s)</td>
+      </tr>`).join('');
+    el.innerHTML = `<div class="table-wrap" style="margin-top:10px"><table class="table">
+      <thead><tr><th>ID</th><th>Type</th><th>Status</th><th>Created</th><th>Attempts</th></tr></thead>
+      <tbody>${rows}</tbody>
+    </table></div>`;
+  }
+
+  async function getAttempts() {
+    const id = document.getElementById('a-event-id').value.trim();
+    if (!id) return;
+    const r = await api('GET', '/api/events/' + id);
+    const el = document.getElementById('a-res');
+    el.style.display = 'block';
+    if (!r.ok) {
+      el.innerHTML = `<div class="res-box err">${JSON.stringify(r.data)}</div>`;
+      return;
+    }
+    const ev = r.data.data;
+    const attempts = ev.deliveryAttempts || [];
+    if (attempts.length === 0) {
+      el.innerHTML = '<div class="empty">No delivery attempts yet</div>';
+      return;
+    }
+    const rows = attempts.map(a => `
+      <div class="attempt-row">
+        <span class="attempt-label">Attempt ${a.attemptNumber}</span>
+        <span class="badge ${a.success ? 'badge-delivered' : 'badge-failed'}">${a.success ? 'success' : 'failed'}</span>
+        <span class="tag">${a.statusCode ?? 'timeout'}</span>
+        <span class="attempt-response">${a.responseBody ?? '—'}</span>
+        <span class="attempt-time">${new Date(a.deliveredAt).toLocaleTimeString()}</span>
+      </div>`).join('');
+    el.innerHTML = `
+      <div class="card" style="margin-top:10px">
+        <div style="display:flex;gap:8px;align-items:center;margin-bottom:12px">
+          <span style="font-size:13px;font-weight:600;color:#fff">${ev.eventType}</span>
+          <span class="badge badge-${ev.status.toLowerCase()}">${ev.status}</span>
+        </div>
+        ${rows}
+      </div>`;
+  }
+
+  async function loadDLQ() {
+    const r = await api('GET', '/api/dlq');
+    const el = document.getElementById('dlq-res');
+    if (!r.ok) {
+      el.innerHTML = `<div class="res-box err">${JSON.stringify(r.data)}</div>`;
+      return;
+    }
+    const items = r.data.data || [];
+    document.getElementById('dlq-count').textContent = items.length + ' dead event(s)';
+    if (items.length === 0) {
+      el.innerHTML = '<div class="empty">No dead events — all clear</div>';
+      return;
+    }
+    el.innerHTML = items.map(item => `
+      <div class="card">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;flex-wrap:wrap">
+          <div>
+            <div style="font-size:13px;font-weight:600;color:#fff;margin-bottom:4px">${item.event?.eventType ?? '—'}</div>
+            <span class="tag">${item.eventId}</span>
+          </div>
+          <div style="text-align:right">
+            <span class="badge badge-dead">DEAD</span>
+            <div style="font-size:11px;color:#555;margin-top:4px">${new Date(item.failedAt).toLocaleString()}</div>
+          </div>
+        </div>
+        <div style="margin-top:10px;font-size:12px;color:#666;background:#0a0a0a;padding:8px 10px;border-radius:6px;border:1px solid #1d1d1d;line-height:1.5">
+          ${item.reason}
+        </div>
+        ${item.requeuedAt
+          ? `<div style="margin-top:8px;font-size:11px;color:#4caf50">Requeued at ${new Date(item.requeuedAt).toLocaleString()}</div>`
+          : `<button class="success" style="margin-top:10px;font-size:12px;padding:5px 10px" onclick="quickRequeue('${item.eventId}')">Requeue this event</button>`
+        }
+      </div>`).join('');
+  }
+
+  async function quickRequeue(eventId) {
+    const r = await api('POST', '/api/dlq/' + eventId + '/requeue');
+    if (r.ok) loadDLQ();
+    else alert(JSON.stringify(r.data));
+  }
+
+  async function requeueEvent() {
+    const id = document.getElementById('dlq-requeue-id').value.trim();
+    if (!id) return showRes('dlq-requeue-res', 'Event ID is required', false);
+    const r = await api('POST', '/api/dlq/' + id + '/requeue');
+    showRes('dlq-requeue-res', r.data, r.ok);
+    if (r.ok) loadDLQ();
+  }
+</script>
+
+</body>
+</html>
